@@ -3,7 +3,9 @@ package com.screenpulsedev.pulsevault
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
@@ -150,20 +152,31 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
             var fingerprintFailCount by remember { mutableStateOf(0) }
             var fallbackHint by remember { mutableStateOf<String?>(null) }
 
-            fun openWithCredential() {
-                try {
-                    BiometricAuthManager.authenticate(
-                        activity = activity,
-                        title = "PulseVault'u Aç",
-                        subtitle = "PIN, desen veya şifreni gir",
-                        executor = executor,
-                        authenticators = BiometricAuthManager.CREDENTIAL_ONLY,
-                        onSuccess = { fingerprintFailCount = 0; fallbackHint = null; viewModel.goTo(Screen.List) },
-                        onError = { msg -> Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show() }
-                    )
-                } catch (e: Exception) {
-                    Toast.makeText(activity, "Hata: ${e.message}", Toast.LENGTH_LONG).show()
+            val credentialLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.StartActivityForResult()
+            ) { result ->
+                if (result.resultCode == android.app.Activity.RESULT_OK) {
+                    fingerprintFailCount = 0
+                    fallbackHint = null
+                    viewModel.goTo(Screen.List)
                 }
+                // resultCode != OK just means the user cancelled — no error toast needed.
+            }
+
+            fun openWithCredential() {
+                BiometricAuthManager.confirmDeviceCredential(
+                    activity = activity,
+                    title = "PulseVault'u Aç",
+                    subtitle = "PIN, desen veya şifreni gir",
+                    launcher = credentialLauncher,
+                    onUnavailable = {
+                        Toast.makeText(
+                            activity,
+                            "Cihazda PIN/Desen/Şifre kilidi ayarlı değil. Ayarlar > Güvenlik'ten ekle.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                )
             }
 
             LockScreen(

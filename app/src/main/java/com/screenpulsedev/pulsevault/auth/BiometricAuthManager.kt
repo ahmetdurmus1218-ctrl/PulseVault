@@ -46,11 +46,22 @@ object BiometricAuthManager {
         onLockout: () -> Unit = {},
         onError: (String) -> Unit
     ) {
-        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+        val includesDeviceCredential = (authenticators and BiometricManager.Authenticators.DEVICE_CREDENTIAL) != 0
+
+        val builder = BiometricPrompt.PromptInfo.Builder()
             .setTitle(title)
             .setSubtitle(subtitle)
             .setAllowedAuthenticators(authenticators)
-            .build()
+
+        // BiometricPrompt requires EXACTLY ONE of these two, never both, never neither:
+        // - a negative button, when DEVICE_CREDENTIAL is NOT among the allowed authenticators
+        // - nothing (device credential itself acts as the "fallback"), when it IS allowed
+        // Skipping this was the exact crash on the fingerprint-only button.
+        if (!includesDeviceCredential) {
+            builder.setNegativeButtonText("İptal")
+        }
+
+        val promptInfo = builder.build()
 
         val prompt = BiometricPrompt(
             activity,
@@ -81,6 +92,35 @@ object BiometricAuthManager {
         )
 
         prompt.authenticate(promptInfo)
+    }
+
+    /**
+     * Confirms the device's own PIN/pattern/password using the classic KeyguardManager
+     * flow (an Activity launched for result) instead of BiometricPrompt's newer
+     * DEVICE_CREDENTIAL authenticator. Some OEM lock-screen skins (seen on Vivo/Funtouch
+     * devices) don't correctly validate pattern/PIN through BiometricPrompt's wrapper —
+     * this talks to the real system lock screen directly, so it always matches whatever
+     * the user actually has set up.
+     *
+     * Just like BiometricPrompt's DEVICE_CREDENTIAL path, a successful confirmation here
+     * unlocks any Keystore key that requires AUTH_DEVICE_CREDENTIAL for its validity
+     * window — this is the original mechanism BiometricPrompt's version is built on.
+     */
+    fun confirmDeviceCredential(
+        activity: FragmentActivity,
+        title: String,
+        subtitle: String,
+        launcher: androidx.activity.result.ActivityResultLauncher<android.content.Intent>,
+        onUnavailable: () -> Unit
+    ) {
+        val keyguardManager =
+            activity.getSystemService(android.content.Context.KEYGUARD_SERVICE) as android.app.KeyguardManager
+        val intent = keyguardManager.createConfirmDeviceCredentialIntent(title, subtitle)
+        if (intent == null) {
+            onUnavailable()
+        } else {
+            launcher.launch(intent)
+        }
     }
 }
 
