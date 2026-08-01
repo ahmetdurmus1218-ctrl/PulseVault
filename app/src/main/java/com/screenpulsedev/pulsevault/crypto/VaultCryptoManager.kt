@@ -24,10 +24,11 @@ import javax.crypto.spec.GCMParameterSpec
 object VaultCryptoManager {
 
     private const val ANDROID_KEYSTORE = "AndroidKeyStore"
-    private const val KEY_ALIAS = "pulsevault_master_key"
+    // v2: bumped alias so any broken key from the earlier (incorrectly time-bound)
+    // config gets regenerated fresh with the correct per-operation setup below.
+    private const val KEY_ALIAS = "pulsevault_master_key_v2"
     private const val TRANSFORMATION = "AES/GCM/NoPadding"
     private const val GCM_TAG_LENGTH_BITS = 128
-    private const val AUTH_VALID_SECONDS = 30 // key usable for 30s after a successful biometric check
 
     private fun keyStore(): KeyStore =
         KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
@@ -48,10 +49,13 @@ object VaultCryptoManager {
             .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
             .setKeySize(256)
             .setUserAuthenticationRequired(true)
-            .setUserAuthenticationParameters(
-                AUTH_VALID_SECONDS,
-                KeyProperties.AUTH_BIOMETRIC_STRONG or KeyProperties.AUTH_DEVICE_CREDENTIAL
-            )
+            // No setUserAuthenticationParameters() call: this keeps the key in
+            // "per-operation" mode, meaning EVERY encrypt/decrypt must be paired
+            // with a fresh, successful BiometricPrompt that is bound to that exact
+            // Cipher via CryptoObject (which is how BiometricAuthManager uses it).
+            // Setting a time-bound duration here was the bug — it made Cipher.init()
+            // require a *prior* generic auth event before the biometric prompt even
+            // ran, throwing UserNotAuthenticatedException immediately on tap.
             .setInvalidatedByBiometricEnrollment(true) // new fingerprint enrolled -> key dies
             .build()
 
