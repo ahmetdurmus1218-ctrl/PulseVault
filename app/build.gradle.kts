@@ -48,6 +48,7 @@ android {
     }
     kotlinOptions {
         jvmTarget = "17"
+        freeCompilerArgs += listOf("-opt-in=androidx.compose.material3.ExperimentalMaterial3Api")
     }
 
     buildFeatures {
@@ -81,6 +82,9 @@ dependencies {
 
     // Biometric auth (fingerprint / face / device credential fallback)
     implementation("androidx.biometric:biometric:1.1.0")
+
+    // Extended icon set (ContentCopy, CreditCard, etc — not in the core icons artifact)
+    implementation("androidx.compose.material:material-icons-extended")
 
     // Room for local, on-device storage only (fields are encrypted before insert)
     implementation("androidx.room:room-runtime:2.6.1")
