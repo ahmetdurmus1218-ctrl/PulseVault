@@ -115,59 +115,78 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
     val executor = ContextCompat.getMainExecutor(activity)
 
     when (val current = screen) {
-        is Screen.Locked -> LockScreen(
-            errorMessage = null,
-            onUnlockClick = {
-                if (!BiometricAuthManager.canAuthenticate(activity)) {
-                    Toast.makeText(
-                        activity,
-                        "Cihazda biyometrik/PIN kilidi ayarlı değil. Ayarlar > Güvenlik'ten ekleyin.",
-                        Toast.LENGTH_LONG
-                    ).show()
-                    return@LockScreen
-                }
-                val cipher = VaultCryptoManager.getEncryptCipher()
-                BiometricAuthManager.authenticate(
-                    activity = activity,
-                    cipher = cipher,
-                    title = "PulseVault'u Aç",
-                    subtitle = "Devam etmek için kimliğini doğrula",
-                    executor = executor,
-                    onSuccess = { viewModel.goTo(Screen.List) },
-                    onError = { msg -> Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show() }
-                )
+        is Screen.Locked -> {
+            val crashLog = remember {
+                val f = java.io.File(activity.filesDir, "crash_log.txt")
+                if (f.exists()) f.readText().takeLast(4000) else null
             }
-        )
+            LockScreen(
+                errorMessage = null,
+                crashLogText = crashLog,
+                onUnlockClick = {
+                    if (!BiometricAuthManager.canAuthenticate(activity)) {
+                        Toast.makeText(
+                            activity,
+                            "Cihazda biyometrik/PIN kilidi ayarlı değil. Ayarlar > Güvenlik'ten ekleyin.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        return@LockScreen
+                    }
+                    try {
+                        val cipher = VaultCryptoManager.getEncryptCipher()
+                        BiometricAuthManager.authenticate(
+                            activity = activity,
+                            cipher = cipher,
+                            title = "PulseVault'u Aç",
+                            subtitle = "Devam etmek için kimliğini doğrula",
+                            executor = executor,
+                            onSuccess = { viewModel.goTo(Screen.List) },
+                            onError = { msg -> Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show() }
+                        )
+                    } catch (e: Exception) {
+                        Toast.makeText(activity, "Hata: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
+                }
+            )
+        }
 
         is Screen.List -> VaultListScreen(
             items = items,
             onAddClick = { viewModel.goTo(Screen.Add) },
             onItemClick = { item ->
-                val cipher = VaultCryptoManager.getDecryptCipher(item.iv)
-                BiometricAuthManager.authenticate(
-                    activity = activity,
-                    cipher = cipher,
-                    title = "Kaydı Görüntüle",
-                    subtitle = item.label,
-                    executor = executor,
-                    onSuccess = { authedCipher -> viewModel.decryptAndShow(authedCipher, item) },
-                    onError = { msg -> Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show() }
-                )
+                try {
+                    val cipher = VaultCryptoManager.getDecryptCipher(item.iv)
+                    BiometricAuthManager.authenticate(
+                        activity = activity,
+                        cipher = cipher,
+                        title = "Kaydı Görüntüle",
+                        subtitle = item.label,
+                        executor = executor,
+                        onSuccess = { authedCipher -> viewModel.decryptAndShow(authedCipher, item) },
+                        onError = { msg -> Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show() }
+                    )
+                } catch (e: Exception) {
+                    Toast.makeText(activity, "Hata: ${e.message}", Toast.LENGTH_LONG).show()
+                }
             }
         )
 
         is Screen.Add -> AddItemScreen(
             onSave = { label, category, payload ->
-                val cipher = VaultCryptoManager.getEncryptCipher()
-                BiometricAuthManager.authenticate(
-                    activity = activity,
-                    cipher = cipher,
-                    title = "Kaydı Şifrele",
-                    subtitle = "Kaydetmek için kimliğini doğrula",
-                    executor = executor,
-                    onSuccess = { authedCipher -> viewModel.addItem(authedCipher, label, category, payload) },
-                    onError = { msg -> Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show() }
-                )
+                try {
+                    val cipher = VaultCryptoManager.getEncryptCipher()
+                    BiometricAuthManager.authenticate(
+                        activity = activity,
+                        cipher = cipher,
+                        title = "Kaydı Şifrele",
+                        subtitle = "Kaydetmek için kimliğini doğrula",
+                        executor = executor,
+                        onSuccess = { authedCipher -> viewModel.addItem(authedCipher, label, category, payload) },
+                        onError = { msg -> Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show() }
+                    )
+                } catch (e: Exception) {
+                    Toast.makeText(activity, "Hata: ${e.message}", Toast.LENGTH_LONG).show()
+                }
             },
             onCancel = { viewModel.goTo(Screen.List) }
         )
