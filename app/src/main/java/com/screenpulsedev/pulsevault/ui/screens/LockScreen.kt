@@ -1,18 +1,23 @@
 package com.screenpulsedev.pulsevault.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -24,14 +29,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
 @Composable
 fun LockScreen(
-    onUnlockWithBiometricClick: () -> Unit,
-    onUnlockWithCredentialClick: () -> Unit,
-    errorMessage: String?,
-    fallbackHint: String? = null,
+    onUnlockClick: () -> Unit,
     crashLogText: String? = null
 ) {
     var showLog by remember { mutableStateOf(false) }
@@ -43,36 +47,52 @@ fun LockScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(
-            imageVector = Icons.Filled.Lock,
-            contentDescription = null,
-            modifier = Modifier.height(64.dp)
+        Box(
+            modifier = Modifier
+                .size(88.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Lock,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(40.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(24.dp))
+        Text(
+            "PulseVault",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold
         )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text("PulseVault kilitli", style = MaterialTheme.typography.headlineSmall)
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            "Açmak için bir yöntem seç",
+            "Kart ve hesap bilgilerine erişmek için\nkimliğini doğrula",
             style = MaterialTheme.typography.bodyMedium,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Spacer(modifier = Modifier.height(24.dp))
-        Button(onClick = onUnlockWithBiometricClick, modifier = Modifier.fillMaxWidth()) {
-            Text("Parmak İzi / Yüz ile Aç")
+        Spacer(modifier = Modifier.height(32.dp))
+        Button(
+            onClick = onUnlockClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+        ) {
+            Text("Kilidi Aç", fontWeight = FontWeight.SemiBold)
         }
-        Spacer(modifier = Modifier.height(12.dp))
-        Button(onClick = onUnlockWithCredentialClick, modifier = Modifier.fillMaxWidth()) {
-            Text("PIN / Desen / Şifre ile Aç")
-        }
-
-        fallbackHint?.let {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(it, color = MaterialTheme.colorScheme.error, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-        }
-        errorMessage?.let {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(it, color = MaterialTheme.colorScheme.error)
-        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            "Parmak izi, yüz tanıma veya cihaz PIN/deseninle",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
 
         if (!crashLogText.isNullOrBlank()) {
             Spacer(modifier = Modifier.height(24.dp))
@@ -102,4 +122,3 @@ fun LockScreen(
         )
     }
 }
-

@@ -3,18 +3,14 @@ package com.screenpulsedev.pulsevault
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
@@ -149,46 +145,13 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
                 val f = java.io.File(activity.filesDir, "crash_log.txt")
                 if (f.exists()) f.readText().takeLast(4000) else null
             }
-            var fingerprintFailCount by remember { mutableStateOf(0) }
-            var fallbackHint by remember { mutableStateOf<String?>(null) }
-
-            val credentialLauncher = rememberLauncherForActivityResult(
-                ActivityResultContracts.StartActivityForResult()
-            ) { result ->
-                if (result.resultCode == android.app.Activity.RESULT_OK) {
-                    fingerprintFailCount = 0
-                    fallbackHint = null
-                    viewModel.goTo(Screen.List)
-                }
-                // resultCode != OK just means the user cancelled — no error toast needed.
-            }
-
-            fun openWithCredential() {
-                BiometricAuthManager.confirmDeviceCredential(
-                    activity = activity,
-                    title = "PulseVault'u Aç",
-                    subtitle = "PIN, desen veya şifreni gir",
-                    launcher = credentialLauncher,
-                    onUnavailable = {
-                        Toast.makeText(
-                            activity,
-                            "Cihazda PIN/Desen/Şifre kilidi ayarlı değil. Ayarlar > Güvenlik'ten ekle.",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-                )
-            }
-
             LockScreen(
-                errorMessage = null,
-                fallbackHint = fallbackHint,
                 crashLogText = crashLog,
-                onUnlockWithCredentialClick = { openWithCredential() },
-                onUnlockWithBiometricClick = {
-                    if (!BiometricAuthManager.canAuthenticate(activity, BiometricAuthManager.BIOMETRIC_ONLY)) {
+                onUnlockClick = {
+                    if (!BiometricAuthManager.canAuthenticate(activity)) {
                         Toast.makeText(
                             activity,
-                            "Cihazda parmak izi/yüz tanıma ayarlı değil. PIN/Desen ile açabilirsin.",
+                            "Cihazda kilit ekranı ayarlı değil. Ayarlar > Güvenlik'ten parmak izi veya PIN ekle.",
                             Toast.LENGTH_LONG
                         ).show()
                         return@LockScreen
@@ -197,20 +160,9 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
                         BiometricAuthManager.authenticate(
                             activity = activity,
                             title = "PulseVault'u Aç",
-                            subtitle = "Parmak izini veya yüzünü doğrula",
+                            subtitle = "Devam etmek için kimliğini doğrula",
                             executor = executor,
-                            authenticators = BiometricAuthManager.BIOMETRIC_ONLY,
-                            onSuccess = { fingerprintFailCount = 0; fallbackHint = null; viewModel.goTo(Screen.List) },
-                            onFailedAttempt = {
-                                fingerprintFailCount++
-                                if (fingerprintFailCount >= 3) {
-                                    fallbackHint = "3 kez hatalı deneme. PIN/Desen ile açmayı deneyebilirsin."
-                                }
-                            },
-                            onLockout = {
-                                fallbackHint = "Parmak izi çok denendi, geçici olarak kilitlendi. PIN/Desen ile aç."
-                                openWithCredential()
-                            },
+                            onSuccess = { viewModel.goTo(Screen.List) },
                             onError = { msg -> Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show() }
                         )
                     } catch (e: Exception) {
