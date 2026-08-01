@@ -24,11 +24,10 @@ import javax.crypto.spec.GCMParameterSpec
 object VaultCryptoManager {
 
     private const val ANDROID_KEYSTORE = "AndroidKeyStore"
-    // v2: bumped alias so any broken key from the earlier (incorrectly time-bound)
-    // config gets regenerated fresh with the correct per-operation setup below.
-    private const val KEY_ALIAS = "pulsevault_master_key_v2"
+    private const val KEY_ALIAS = "pulsevault_master_key_v3"
     private const val TRANSFORMATION = "AES/GCM/NoPadding"
     private const val GCM_TAG_LENGTH_BITS = 128
+    private const val AUTH_VALID_SECONDS = 30 // key usable for 30s after a successful unlock
 
     private fun keyStore(): KeyStore =
         KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
@@ -49,13 +48,16 @@ object VaultCryptoManager {
             .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
             .setKeySize(256)
             .setUserAuthenticationRequired(true)
-            // No setUserAuthenticationParameters() call: this keeps the key in
-            // "per-operation" mode, meaning EVERY encrypt/decrypt must be paired
-            // with a fresh, successful BiometricPrompt that is bound to that exact
-            // Cipher via CryptoObject (which is how BiometricAuthManager uses it).
-            // Setting a time-bound duration here was the bug — it made Cipher.init()
-            // require a *prior* generic auth event before the biometric prompt even
-            // ran, throwing UserNotAuthenticatedException immediately on tap.
+            // Time-bound key (valid for AUTH_VALID_SECONDS after a fresh unlock).
+            // This is what lets device PIN/pattern work as a fallback, not just
+            // fingerprint/face — device-credential unlock can't be bound directly
+            // to a single Cipher via CryptoObject the way biometric-only can, so
+            // the app authenticates generically first (see BiometricAuthManager),
+            // then creates+uses the cipher inside that validity window.
+            .setUserAuthenticationParameters(
+                AUTH_VALID_SECONDS,
+                KeyProperties.AUTH_BIOMETRIC_STRONG or KeyProperties.AUTH_DEVICE_CREDENTIAL
+            )
             .setInvalidatedByBiometricEnrollment(true) // new fingerprint enrolled -> key dies
             .build()
 

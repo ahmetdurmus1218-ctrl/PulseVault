@@ -134,10 +134,8 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
                         return@LockScreen
                     }
                     try {
-                        val cipher = VaultCryptoManager.getEncryptCipher()
                         BiometricAuthManager.authenticate(
                             activity = activity,
-                            cipher = cipher,
                             title = "PulseVault'u Aç",
                             subtitle = "Devam etmek için kimliğini doğrula",
                             executor = executor,
@@ -155,39 +153,41 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
             items = items,
             onAddClick = { viewModel.goTo(Screen.Add) },
             onItemClick = { item ->
-                try {
-                    val cipher = VaultCryptoManager.getDecryptCipher(item.iv)
-                    BiometricAuthManager.authenticate(
-                        activity = activity,
-                        cipher = cipher,
-                        title = "Kaydı Görüntüle",
-                        subtitle = item.label,
-                        executor = executor,
-                        onSuccess = { authedCipher -> viewModel.decryptAndShow(authedCipher, item) },
-                        onError = { msg -> Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show() }
-                    )
-                } catch (e: Exception) {
-                    Toast.makeText(activity, "Hata: ${e.message}", Toast.LENGTH_LONG).show()
-                }
+                BiometricAuthManager.authenticate(
+                    activity = activity,
+                    title = "Kaydı Görüntüle",
+                    subtitle = item.label,
+                    executor = executor,
+                    onSuccess = {
+                        try {
+                            val cipher = VaultCryptoManager.getDecryptCipher(item.iv)
+                            viewModel.decryptAndShow(cipher, item)
+                        } catch (e: Exception) {
+                            Toast.makeText(activity, "Hata: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                    },
+                    onError = { msg -> Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show() }
+                )
             }
         )
 
         is Screen.Add -> AddItemScreen(
             onSave = { label, category, payload ->
-                try {
-                    val cipher = VaultCryptoManager.getEncryptCipher()
-                    BiometricAuthManager.authenticate(
-                        activity = activity,
-                        cipher = cipher,
-                        title = "Kaydı Şifrele",
-                        subtitle = "Kaydetmek için kimliğini doğrula",
-                        executor = executor,
-                        onSuccess = { authedCipher -> viewModel.addItem(authedCipher, label, category, payload) },
-                        onError = { msg -> Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show() }
-                    )
-                } catch (e: Exception) {
-                    Toast.makeText(activity, "Hata: ${e.message}", Toast.LENGTH_LONG).show()
-                }
+                BiometricAuthManager.authenticate(
+                    activity = activity,
+                    title = "Kaydı Şifrele",
+                    subtitle = "Kaydetmek için kimliğini doğrula",
+                    executor = executor,
+                    onSuccess = {
+                        try {
+                            val cipher = VaultCryptoManager.getEncryptCipher()
+                            viewModel.addItem(cipher, label, category, payload)
+                        } catch (e: Exception) {
+                            Toast.makeText(activity, "Hata: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                    },
+                    onError = { msg -> Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show() }
+                )
             },
             onCancel = { viewModel.goTo(Screen.List) }
         )

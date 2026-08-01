@@ -4,15 +4,18 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.fragment.app.FragmentActivity
 import java.util.concurrent.Executor
-import javax.crypto.Cipher
 
 /**
- * Wraps BiometricPrompt so every unlock/encrypt/decrypt is tied to a live
- * biometric (or device PIN/pattern fallback) check via a CryptoObject.
+ * Wraps BiometricPrompt for a *generic* unlock check: fingerprint/face OR the
+ * device's own PIN/pattern/password, whichever the user has set up and chooses.
  *
- * Because the Cipher passed in comes from VaultCryptoManager (a Keystore key with
- * setUserAuthenticationRequired(true)), the OS refuses to run the cipher unless this
- * prompt has just succeeded. There is no code path that decrypts data without it.
+ * This intentionally does NOT bind a Cipher via CryptoObject. Android doesn't
+ * support binding device-credential (PIN/pattern) unlocks to a single crypto
+ * operation the way it supports binding a fingerprint scan — only BIOMETRIC_STRONG
+ * can be tied to a CryptoObject that way. So instead: authenticate generically first,
+ * then (within the key's short validity window — see VaultCryptoManager) create and
+ * use the Cipher. The Keystore itself still enforces that no encrypt/decrypt can
+ * happen without a recent successful unlock; the app can't bypass that.
  */
 object BiometricAuthManager {
 
@@ -29,11 +32,10 @@ object BiometricAuthManager {
 
     fun authenticate(
         activity: FragmentActivity,
-        cipher: Cipher,
         title: String,
         subtitle: String,
         executor: Executor,
-        onSuccess: (Cipher) -> Unit,
+        onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
@@ -47,12 +49,7 @@ object BiometricAuthManager {
             executor,
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    val authedCipher = result.cryptoObject?.cipher
-                    if (authedCipher != null) {
-                        onSuccess(authedCipher)
-                    } else {
-                        onError("Şifreleme nesnesi alınamadı")
-                    }
+                    onSuccess()
                 }
 
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
@@ -65,6 +62,7 @@ object BiometricAuthManager {
             }
         )
 
-        prompt.authenticate(promptInfo, BiometricPrompt.CryptoObject(cipher))
+        prompt.authenticate(promptInfo)
     }
 }
+
