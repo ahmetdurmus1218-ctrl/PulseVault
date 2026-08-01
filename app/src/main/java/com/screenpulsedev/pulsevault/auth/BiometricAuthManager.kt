@@ -19,15 +19,20 @@ import java.util.concurrent.Executor
  */
 object BiometricAuthManager {
 
-    /** BIOMETRIC_STRONG (fingerprint/face) with PIN/pattern/password as fallback. */
-    private const val ALLOWED_AUTHENTICATORS =
+    /** Combined: whichever the OS offers first (used by add/view flows, unchanged). */
+    const val ANY_METHOD =
         BiometricManager.Authenticators.BIOMETRIC_STRONG or
             BiometricManager.Authenticators.DEVICE_CREDENTIAL
 
-    fun canAuthenticate(activity: FragmentActivity): Boolean {
+    /** Forces the fingerprint/face prompt only — no PIN option shown by the OS. */
+    const val BIOMETRIC_ONLY = BiometricManager.Authenticators.BIOMETRIC_STRONG
+
+    /** Forces the device PIN/pattern/password confirmation screen only. */
+    const val CREDENTIAL_ONLY = BiometricManager.Authenticators.DEVICE_CREDENTIAL
+
+    fun canAuthenticate(activity: FragmentActivity, authenticators: Int = ANY_METHOD): Boolean {
         val manager = BiometricManager.from(activity)
-        return manager.canAuthenticate(ALLOWED_AUTHENTICATORS) ==
-            BiometricManager.BIOMETRIC_SUCCESS
+        return manager.canAuthenticate(authenticators) == BiometricManager.BIOMETRIC_SUCCESS
     }
 
     fun authenticate(
@@ -35,13 +40,16 @@ object BiometricAuthManager {
         title: String,
         subtitle: String,
         executor: Executor,
+        authenticators: Int = ANY_METHOD,
         onSuccess: () -> Unit,
+        onFailedAttempt: () -> Unit = {},
+        onLockout: () -> Unit = {},
         onError: (String) -> Unit
     ) {
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
             .setTitle(title)
             .setSubtitle(subtitle)
-            .setAllowedAuthenticators(ALLOWED_AUTHENTICATORS)
+            .setAllowedAuthenticators(authenticators)
             .build()
 
         val prompt = BiometricPrompt(
@@ -53,11 +61,21 @@ object BiometricAuthManager {
                 }
 
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    onError(errString.toString())
+                    // The OS itself locks fingerprint out (temporarily or permanently)
+                    // after too many wrong attempts — that's the real signal to fall
+                    // back to the device PIN/pattern, not just our own tap counter.
+                    if (errorCode == BiometricPrompt.ERROR_LOCKOUT ||
+                        errorCode == BiometricPrompt.ERROR_LOCKOUT_PERMANENT
+                    ) {
+                        onLockout()
+                    } else {
+                        onError(errString.toString())
+                    }
                 }
 
                 override fun onAuthenticationFailed() {
-                    // A single failed attempt (e.g. wrong finger) — prompt stays open, no-op.
+                    // A single wrong fingerprint — prompt stays open; let the caller count these.
+                    onFailedAttempt()
                 }
             }
         )

@@ -28,8 +28,10 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun LockScreen(
-    onUnlockClick: () -> Unit,
+    onUnlockWithBiometricClick: () -> Unit,
+    onUnlockWithCredentialClick: () -> Unit,
     errorMessage: String?,
+    fallbackHint: String? = null,
     crashLogText: String? = null
 ) {
     var showLog by remember { mutableStateOf(false) }
@@ -50,13 +52,22 @@ fun LockScreen(
         Text("PulseVault kilitli", style = MaterialTheme.typography.headlineSmall)
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            "Kart ve hesap bilgilerine erişmek için parmak izi/kimlik doğrulaması gerekli",
+            "Açmak için bir yöntem seç",
             style = MaterialTheme.typography.bodyMedium,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
         Spacer(modifier = Modifier.height(24.dp))
-        Button(onClick = onUnlockClick) {
-            Text("Parmak İziyle Aç")
+        Button(onClick = onUnlockWithBiometricClick, modifier = Modifier.fillMaxWidth()) {
+            Text("Parmak İzi / Yüz ile Aç")
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        Button(onClick = onUnlockWithCredentialClick, modifier = Modifier.fillMaxWidth()) {
+            Text("PIN / Desen / Şifre ile Aç")
+        }
+
+        fallbackHint?.let {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(it, color = MaterialTheme.colorScheme.error, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         }
         errorMessage?.let {
             Spacer(modifier = Modifier.height(16.dp))

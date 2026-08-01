@@ -10,7 +10,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
@@ -145,14 +147,35 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
                 val f = java.io.File(activity.filesDir, "crash_log.txt")
                 if (f.exists()) f.readText().takeLast(4000) else null
             }
+            var fingerprintFailCount by remember { mutableStateOf(0) }
+            var fallbackHint by remember { mutableStateOf<String?>(null) }
+
+            fun openWithCredential() {
+                try {
+                    BiometricAuthManager.authenticate(
+                        activity = activity,
+                        title = "PulseVault'u Aç",
+                        subtitle = "PIN, desen veya şifreni gir",
+                        executor = executor,
+                        authenticators = BiometricAuthManager.CREDENTIAL_ONLY,
+                        onSuccess = { fingerprintFailCount = 0; fallbackHint = null; viewModel.goTo(Screen.List) },
+                        onError = { msg -> Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show() }
+                    )
+                } catch (e: Exception) {
+                    Toast.makeText(activity, "Hata: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+
             LockScreen(
                 errorMessage = null,
+                fallbackHint = fallbackHint,
                 crashLogText = crashLog,
-                onUnlockClick = {
-                    if (!BiometricAuthManager.canAuthenticate(activity)) {
+                onUnlockWithCredentialClick = { openWithCredential() },
+                onUnlockWithBiometricClick = {
+                    if (!BiometricAuthManager.canAuthenticate(activity, BiometricAuthManager.BIOMETRIC_ONLY)) {
                         Toast.makeText(
                             activity,
-                            "Cihazda biyometrik/PIN kilidi ayarlı değil. Ayarlar > Güvenlik'ten ekleyin.",
+                            "Cihazda parmak izi/yüz tanıma ayarlı değil. PIN/Desen ile açabilirsin.",
                             Toast.LENGTH_LONG
                         ).show()
                         return@LockScreen
@@ -161,9 +184,20 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
                         BiometricAuthManager.authenticate(
                             activity = activity,
                             title = "PulseVault'u Aç",
-                            subtitle = "Devam etmek için kimliğini doğrula",
+                            subtitle = "Parmak izini veya yüzünü doğrula",
                             executor = executor,
-                            onSuccess = { viewModel.goTo(Screen.List) },
+                            authenticators = BiometricAuthManager.BIOMETRIC_ONLY,
+                            onSuccess = { fingerprintFailCount = 0; fallbackHint = null; viewModel.goTo(Screen.List) },
+                            onFailedAttempt = {
+                                fingerprintFailCount++
+                                if (fingerprintFailCount >= 3) {
+                                    fallbackHint = "3 kez hatalı deneme. PIN/Desen ile açmayı deneyebilirsin."
+                                }
+                            },
+                            onLockout = {
+                                fallbackHint = "Parmak izi çok denendi, geçici olarak kilitlendi. PIN/Desen ile aç."
+                                openWithCredential()
+                            },
                             onError = { msg -> Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show() }
                         )
                     } catch (e: Exception) {
