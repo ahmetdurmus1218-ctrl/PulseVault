@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -16,6 +17,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.screenpulsedev.pulsevault.data.VaultCategory
 import com.screenpulsedev.pulsevault.data.VaultItemPayload
@@ -45,19 +48,36 @@ fun AddItemScreen(
                 label = { Text("Kart Sahibi") }, modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(8.dp))
+
+            // Card number: digits only, grouped in 4s, capped at 19 digits (covers all
+            // major card networks — Amex is 15, most others 16, some debit up to 19).
             OutlinedTextField(
-                value = number, onValueChange = { number = it },
-                label = { Text("Kart Numarası / IBAN") }, modifier = Modifier.fillMaxWidth()
+                value = formatCardNumber(number),
+                onValueChange = { input -> number = input.filter { it.isDigit() }.take(19) },
+                label = { Text("Kart Numarası / IBAN") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(8.dp))
+
+            // Expiry: digits only, auto-inserts "/" after MM, capped at MM/YY (4 digits).
             OutlinedTextField(
-                value = expiry, onValueChange = { expiry = it },
-                label = { Text("Son Kullanma (AA/YY)") }, modifier = Modifier.fillMaxWidth()
+                value = formatExpiry(expiry),
+                onValueChange = { input -> expiry = input.filter { it.isDigit() }.take(4) },
+                label = { Text("Son Kullanma (AA/YY)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(8.dp))
+
+            // CVV: digits only, capped at 4 (Amex uses 4, everyone else 3), masked like a PIN.
             OutlinedTextField(
-                value = cvv, onValueChange = { cvv = it },
-                label = { Text("CVV") }, modifier = Modifier.fillMaxWidth()
+                value = cvv,
+                onValueChange = { input -> cvv = input.filter { it.isDigit() }.take(4) },
+                label = { Text("CVV") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                visualTransformation = PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
@@ -80,3 +100,11 @@ fun AddItemScreen(
         }
     }
 }
+
+/** "4111111111111111" -> "4111 1111 1111 1111" for on-screen readability. */
+private fun formatCardNumber(digits: String): String =
+    digits.chunked(4).joinToString(" ")
+
+/** "1226" -> "12/26" for on-screen readability. */
+private fun formatExpiry(digits: String): String =
+    if (digits.length <= 2) digits else "${digits.take(2)}/${digits.drop(2)}"
