@@ -23,9 +23,12 @@ misc.xml
 deploymentTargetDropDown.xml
 render.experimental.xml
 
-# Keystore files
+# Keystore files (debug.keystore is intentionally committed below so every
+# CI build and every dev machine signs with the same key — required for
+# consistent installs/updates across builds)
 *.jks
 *.keystore
+!debug.keystore
 
 # Google Services (e.g. APIs or Firebase)
 google-services.json
