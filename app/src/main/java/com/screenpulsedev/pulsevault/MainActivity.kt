@@ -52,6 +52,11 @@ class VaultViewModel(private val repo: VaultRepository) : ViewModel() {
     private val _items = MutableStateFlow<kotlin.collections.List<VaultItem>>(emptyList())
     val items: StateFlow<kotlin.collections.List<VaultItem>> = _items.asStateFlow()
 
+    private val _errorEvent = MutableStateFlow<String?>(null)
+    val errorEvent: StateFlow<String?> = _errorEvent.asStateFlow()
+
+    fun consumeError() { _errorEvent.value = null }
+
     init {
         viewModelScope.launch {
             repo.observeAll().collect { _items.value = it }
@@ -62,15 +67,26 @@ class VaultViewModel(private val repo: VaultRepository) : ViewModel() {
 
     fun addItem(cipher: javax.crypto.Cipher, label: String, category: VaultCategory, payload: VaultItemPayload) {
         viewModelScope.launch {
-            repo.addItem(cipher, label, category, payload)
-            _screen.value = Screen.List
+            try {
+                repo.addItem(cipher, label, category, payload)
+                _screen.value = Screen.List
+            } catch (e: Exception) {
+                _errorEvent.value = "Kaydedilemedi: ${e.message}"
+            }
         }
     }
 
     fun decryptAndShow(cipher: javax.crypto.Cipher, item: VaultItem) {
         viewModelScope.launch {
-            val payload = repo.decryptItem(cipher, item)
-            _screen.value = Screen.Detail(item, payload)
+            try {
+                val payload = repo.decryptItem(cipher, item)
+                _screen.value = Screen.Detail(item, payload)
+            } catch (e: Exception) {
+                // Most common cause: this entry was encrypted under an older
+                // Keystore key (e.g. before a security-config change invalidated
+                // the previous key). It can't be recovered — only deleted.
+                _errorEvent.value = "Bu kayıt açılamadı ve kurtarılamaz (eski anahtarla şifrelenmiş olabilir). Kaydı silip yeniden eklemen gerekiyor."
+            }
         }
     }
 
@@ -113,7 +129,15 @@ class MainActivity : FragmentActivity() {
 fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
     val screen by viewModel.screen.collectAsState()
     val items by viewModel.items.collectAsState()
+    val errorEvent by viewModel.errorEvent.collectAsState()
     val executor = ContextCompat.getMainExecutor(activity)
+
+    androidx.compose.runtime.LaunchedEffect(errorEvent) {
+        errorEvent?.let {
+            Toast.makeText(activity, it, Toast.LENGTH_LONG).show()
+            viewModel.consumeError()
+        }
+    }
 
     when (val current = screen) {
         is Screen.Locked -> {
