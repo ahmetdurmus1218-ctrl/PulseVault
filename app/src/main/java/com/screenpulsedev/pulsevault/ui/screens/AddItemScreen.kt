@@ -1,11 +1,13 @@
 package com.screenpulsedev.pulsevault.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
@@ -13,9 +15,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -37,10 +43,18 @@ import com.screenpulsedev.pulsevault.data.CardNetwork
 import com.screenpulsedev.pulsevault.data.TURKISH_BANKS
 import com.screenpulsedev.pulsevault.data.VaultCategory
 import com.screenpulsedev.pulsevault.data.VaultItemPayload
+import com.screenpulsedev.pulsevault.ui.components.CardNumberVisualTransformation
 import com.screenpulsedev.pulsevault.ui.components.CreditCardView
+import com.screenpulsedev.pulsevault.ui.components.ExpiryVisualTransformation
 
 @Composable
 fun AddItemScreen(
+    screenTitle: String = "Yeni Kart",
+    initialLabel: String = "",
+    initialBank: String = "",
+    initialNetwork: CardNetwork? = null,
+    initialIsVirtual: Boolean = false,
+    initialPayload: VaultItemPayload = VaultItemPayload(),
     onSave: (
         label: String,
         category: VaultCategory,
@@ -51,32 +65,44 @@ fun AddItemScreen(
     ) -> Unit,
     onCancel: () -> Unit
 ) {
-    var label by remember { mutableStateOf("") }
-    var holderName by remember { mutableStateOf("") }
-    var number by remember { mutableStateOf("") }
-    var expiry by remember { mutableStateOf("") }
-    var cvv by remember { mutableStateOf("") }
-    var notes by remember { mutableStateOf("") }
-    var bank by remember { mutableStateOf("") }
-    var network by remember { mutableStateOf<CardNetwork?>(null) }
-    var isVirtual by remember { mutableStateOf(false) }
+    BackHandler(onBack = onCancel)
 
-    val digitsOnly = number.filter { it.isDigit() }
-    val detectedNetwork = network ?: CardNetwork.fromCardNumber(digitsOnly)
+    var label by remember { mutableStateOf(initialLabel) }
+    var holderName by remember { mutableStateOf(initialPayload.holderName) }
+    var number by remember { mutableStateOf(initialPayload.number.filter { it.isDigit() }) }
+    var expiry by remember { mutableStateOf(initialPayload.expiry.filter { it.isDigit() }) }
+    var cvv by remember { mutableStateOf(initialPayload.cvv) }
+    var notes by remember { mutableStateOf(initialPayload.notes) }
+    var bank by remember { mutableStateOf(initialBank) }
+    var network by remember { mutableStateOf(initialNetwork) }
+    var isVirtual by remember { mutableStateOf(initialIsVirtual) }
 
-    Scaffold(topBar = { TopAppBar(title = { Text("Yeni Kart") }) }) { padding ->
+    val detectedNetwork = network ?: CardNetwork.fromCardNumber(number)
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(screenTitle) },
+                navigationIcon = {
+                    IconButton(onClick = onCancel) {
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Geri")
+                    }
+                }
+            )
+        }
+    ) { padding ->
         Column(
             modifier = Modifier
                 .padding(padding)
+                .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            // Live preview — updates as the user fills in the fields below.
             CreditCardView(
                 label = label.ifBlank { "Yeni Kart" },
                 category = VaultCategory.CREDIT_CARD,
                 network = detectedNetwork,
-                lastFourDigits = digitsOnly.takeLast(4),
+                lastFourDigits = number.takeLast(4),
                 bank = bank,
                 isVirtual = isVirtual
             )
@@ -144,21 +170,25 @@ fun AddItemScreen(
             )
             Spacer(Modifier.height(8.dp))
 
+            // Raw digits stay as the actual state; VisualTransformation only changes
+            // what's drawn on screen, so the cursor never jumps while typing/deleting.
             OutlinedTextField(
-                value = formatCardNumber(number),
+                value = number,
                 onValueChange = { input -> number = input.filter { it.isDigit() }.take(19) },
                 label = { Text("Kart Numarası / IBAN") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                visualTransformation = CardNumberVisualTransformation(),
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(8.dp))
 
             Row(Modifier.fillMaxWidth()) {
                 OutlinedTextField(
-                    value = formatExpiry(expiry),
+                    value = expiry,
                     onValueChange = { input -> expiry = input.filter { it.isDigit() }.take(4) },
                     label = { Text("Son Kullanma (AA/YY)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    visualTransformation = ExpiryVisualTransformation(),
                     modifier = Modifier.weight(1f)
                 )
                 Spacer(Modifier.width(8.dp))
@@ -194,11 +224,7 @@ fun AddItemScreen(
             ) { Text("Şifrele ve Kaydet") }
             Spacer(Modifier.height(8.dp))
             Button(onClick = onCancel, modifier = Modifier.fillMaxWidth()) { Text("Vazgeç") }
+            Spacer(Modifier.height(16.dp))
         }
     }
 }
-
-private fun formatCardNumber(digits: String): String = digits.chunked(4).joinToString(" ")
-
-private fun formatExpiry(digits: String): String =
-    if (digits.length <= 2) digits else "${digits.take(2)}/${digits.drop(2)}"

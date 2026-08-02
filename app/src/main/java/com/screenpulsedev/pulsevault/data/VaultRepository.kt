@@ -40,6 +40,35 @@ class VaultRepository(context: Context) {
         )
     }
 
+    /** Same shape as addItem, but overwrites an existing row (same id) instead of inserting. */
+    suspend fun updateItem(
+        cipher: Cipher,
+        id: Long,
+        label: String,
+        category: VaultCategory,
+        payload: VaultItemPayload,
+        network: CardNetwork,
+        bank: String,
+        isVirtual: Boolean
+    ) {
+        val json = payloadToJson(payload)
+        val blob = VaultCryptoManager.encrypt(cipher, json)
+        val digitsOnly = payload.number.filter { it.isDigit() }
+        dao.update(
+            VaultItem(
+                id = id,
+                label = label,
+                category = category,
+                network = network,
+                lastFourDigits = digitsOnly.takeLast(4),
+                bank = bank,
+                isVirtual = isVirtual,
+                encryptedData = blob.ciphertext,
+                iv = blob.iv
+            )
+        )
+    }
+
     /** cipher must be initialized with getDecryptCipher(item.iv) and authenticated. */
     suspend fun decryptItem(cipher: Cipher, item: VaultItem): VaultItemPayload {
         val json = VaultCryptoManager.decrypt(

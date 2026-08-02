@@ -43,6 +43,7 @@ sealed interface Screen {
     data object List : Screen
     data object Add : Screen
     data class Detail(val item: VaultItem, val payload: VaultItemPayload) : Screen
+    data class Edit(val item: VaultItem, val payload: VaultItemPayload) : Screen
 }
 
 class VaultViewModel(private val repo: VaultRepository) : ViewModel() {
@@ -80,6 +81,26 @@ class VaultViewModel(private val repo: VaultRepository) : ViewModel() {
                 _screen.value = Screen.List
             } catch (e: Exception) {
                 _errorEvent.value = "Kaydedilemedi: ${e.message}"
+            }
+        }
+    }
+
+    fun updateItem(
+        cipher: javax.crypto.Cipher,
+        id: Long,
+        label: String,
+        category: VaultCategory,
+        payload: VaultItemPayload,
+        network: com.screenpulsedev.pulsevault.data.CardNetwork,
+        bank: String,
+        isVirtual: Boolean
+    ) {
+        viewModelScope.launch {
+            try {
+                repo.updateItem(cipher, id, label, category, payload, network, bank, isVirtual)
+                _screen.value = Screen.List
+            } catch (e: Exception) {
+                _errorEvent.value = "Güncellenemedi: ${e.message}"
             }
         }
     }
@@ -244,7 +265,35 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
                 Toast.makeText(activity, "$fieldLabel kopyalandı (30sn sonra silinir)", Toast.LENGTH_SHORT).show()
             },
             onDelete = { viewModel.delete(current.item) },
+            onEdit = { viewModel.goTo(Screen.Edit(current.item, current.payload)) },
             onBack = { viewModel.goTo(Screen.List) }
+        )
+
+        is Screen.Edit -> AddItemScreen(
+            screenTitle = "Kartı Düzenle",
+            initialLabel = current.item.label,
+            initialBank = current.item.bank,
+            initialNetwork = current.item.network,
+            initialIsVirtual = current.item.isVirtual,
+            initialPayload = current.payload,
+            onSave = { label, category, payload, network, bank, isVirtual ->
+                BiometricAuthManager.authenticate(
+                    activity = activity,
+                    title = "Değişiklikleri Kaydet",
+                    subtitle = "Kaydetmek için kimliğini doğrula",
+                    executor = executor,
+                    onSuccess = {
+                        try {
+                            val cipher = VaultCryptoManager.getEncryptCipher()
+                            viewModel.updateItem(cipher, current.item.id, label, category, payload, network, bank, isVirtual)
+                        } catch (e: Exception) {
+                            Toast.makeText(activity, "Hata: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                    },
+                    onError = { msg -> Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show() }
+                )
+            },
+            onCancel = { viewModel.goTo(Screen.List) }
         )
     }
 }

@@ -1,6 +1,7 @@
 package com.screenpulsedev.pulsevault.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,10 +24,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.screenpulsedev.pulsevault.data.VaultItemPayload
 
-/** The back of the card: magnetic-stripe bar + CVV panel + full number/expiry/holder. */
+/**
+ * The back of the card. Every field (number, holder, expiry, CVV) is directly
+ * tappable to copy — no separate list of buttons needed below the card.
+ */
 @Composable
 fun CreditCardBackView(
     payload: VaultItemPayload,
+    onCopy: (fieldLabel: String, value: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -34,13 +39,10 @@ fun CreditCardBackView(
             .fillMaxWidth()
             .aspectRatio(1.75f)
             .clip(RoundedCornerShape(20.dp))
-            .background(
-                brush = Brush.linearGradient(listOf(Color(0xFF232526), Color(0xFF3A3D42)))
-            )
+            .background(brush = Brush.linearGradient(listOf(Color(0xFF232526), Color(0xFF3A3D42))))
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             Spacer(modifier = Modifier.height(18.dp))
-            // Magnetic stripe
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -56,7 +58,10 @@ fun CreditCardBackView(
                         color = Color.White,
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Medium,
-                        letterSpacing = 1.sp
+                        letterSpacing = 1.sp,
+                        modifier = Modifier.clickable {
+                            onCopy("Kart Numarası", payload.number)
+                        }
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                 }
@@ -66,13 +71,21 @@ fun CreditCardBackView(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     if (payload.holderName.isNotBlank()) {
-                        Column {
+                        Column(
+                            modifier = Modifier.clickable {
+                                onCopy("Kart Sahibi", payload.holderName)
+                            }
+                        ) {
                             Text("KART SAHİBİ", color = Color.White.copy(alpha = 0.55f), fontSize = 9.sp)
                             Text(payload.holderName.uppercase(), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
                     if (payload.expiry.isNotBlank()) {
-                        Column {
+                        Column(
+                            modifier = Modifier.clickable {
+                                onCopy("Son Kullanma", payload.expiry)
+                            }
+                        ) {
                             Text("SKT", color = Color.White.copy(alpha = 0.55f), fontSize = 9.sp)
                             Text(payload.expiry, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                         }
@@ -82,12 +95,25 @@ fun CreditCardBackView(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(Color.White)
+                                .clickable { onCopy("CVV", payload.cvv) }
                                 .padding(horizontal = 10.dp, vertical = 4.dp)
                         ) {
                             Text(payload.cvv, color = Color.Black, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
+            }
+
+            if (payload.notes.isNotBlank()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = payload.notes,
+                    color = Color.White.copy(alpha = 0.6f),
+                    fontSize = 10.sp,
+                    modifier = Modifier
+                        .padding(horizontal = 18.dp)
+                        .clickable { onCopy("Not", payload.notes) }
+                )
             }
         }
     }
