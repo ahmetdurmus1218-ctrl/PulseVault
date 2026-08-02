@@ -18,7 +18,10 @@ class VaultRepository(context: Context) {
         cipher: Cipher,
         label: String,
         category: VaultCategory,
-        payload: VaultItemPayload
+        payload: VaultItemPayload,
+        network: CardNetwork,
+        bank: String,
+        isVirtual: Boolean
     ) {
         val json = payloadToJson(payload)
         val blob = VaultCryptoManager.encrypt(cipher, json)
@@ -27,8 +30,10 @@ class VaultRepository(context: Context) {
             VaultItem(
                 label = label,
                 category = category,
-                network = CardNetwork.fromCardNumber(digitsOnly),
+                network = network,
                 lastFourDigits = digitsOnly.takeLast(4),
+                bank = bank,
+                isVirtual = isVirtual,
                 encryptedData = blob.ciphertext,
                 iv = blob.iv
             )

@@ -65,10 +65,18 @@ class VaultViewModel(private val repo: VaultRepository) : ViewModel() {
 
     fun goTo(screen: Screen) { _screen.value = screen }
 
-    fun addItem(cipher: javax.crypto.Cipher, label: String, category: VaultCategory, payload: VaultItemPayload) {
+    fun addItem(
+        cipher: javax.crypto.Cipher,
+        label: String,
+        category: VaultCategory,
+        payload: VaultItemPayload,
+        network: com.screenpulsedev.pulsevault.data.CardNetwork,
+        bank: String,
+        isVirtual: Boolean
+    ) {
         viewModelScope.launch {
             try {
-                repo.addItem(cipher, label, category, payload)
+                repo.addItem(cipher, label, category, payload, network, bank, isVirtual)
                 _screen.value = Screen.List
             } catch (e: Exception) {
                 _errorEvent.value = "Kaydedilemedi: ${e.message}"
@@ -114,6 +122,14 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         VaultCryptoManager.ensureKeyExists()
+
+        // Blocks screenshots, screen recording, and the "recent apps" thumbnail
+        // preview from ever showing this screen's contents — enforced by the OS,
+        // not something a screenshot app can bypass.
+        window.setFlags(
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+            android.view.WindowManager.LayoutParams.FLAG_SECURE
+        )
 
         setContent {
             PulseVaultTheme {
@@ -195,7 +211,7 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
         )
 
         is Screen.Add -> AddItemScreen(
-            onSave = { label, category, payload ->
+            onSave = { label, category, payload, network, bank, isVirtual ->
                 BiometricAuthManager.authenticate(
                     activity = activity,
                     title = "Kaydı Şifrele",
@@ -204,7 +220,7 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
                     onSuccess = {
                         try {
                             val cipher = VaultCryptoManager.getEncryptCipher()
-                            viewModel.addItem(cipher, label, category, payload)
+                            viewModel.addItem(cipher, label, category, payload, network, bank, isVirtual)
                         } catch (e: Exception) {
                             Toast.makeText(activity, "Hata: ${e.message}", Toast.LENGTH_LONG).show()
                         }
@@ -217,6 +233,11 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
 
         is Screen.Detail -> ItemDetailScreen(
             label = current.item.label,
+            category = current.item.category,
+            network = current.item.network,
+            lastFourDigits = current.item.lastFourDigits,
+            bank = current.item.bank,
+            isVirtual = current.item.isVirtual,
             payload = current.payload,
             onCopy = { fieldLabel, value ->
                 copySensitiveText(activity, fieldLabel, value)

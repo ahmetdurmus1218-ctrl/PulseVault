@@ -31,7 +31,15 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
-@Database(entities = [VaultItem::class], version = 2, exportSchema = false)
+/** v2 -> v3: adds bank name + virtual-card flag, both plaintext (printed on the card). */
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE vault_items ADD COLUMN bank TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE vault_items ADD COLUMN isVirtual INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
+@Database(entities = [VaultItem::class], version = 3, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class VaultDatabase : RoomDatabase() {
     abstract fun vaultDao(): VaultDao
@@ -45,7 +53,7 @@ abstract class VaultDatabase : RoomDatabase() {
                     context.applicationContext,
                     VaultDatabase::class.java,
                     "pulsevault.db"
-                ).addMigrations(MIGRATION_1_2).build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { INSTANCE = it }
             }
     }
 }

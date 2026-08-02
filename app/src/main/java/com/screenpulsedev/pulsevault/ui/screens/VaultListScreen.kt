@@ -149,6 +149,8 @@ private fun VaultItemCard(item: VaultItem, onClick: () -> Unit) {
             category = item.category,
             network = item.network,
             lastFourDigits = item.lastFourDigits,
+            bank = item.bank,
+            isVirtual = item.isVirtual,
             modifier = Modifier.clickable(
                 interactionSource = interaction,
                 indication = androidx.compose.foundation.LocalIndication.current,

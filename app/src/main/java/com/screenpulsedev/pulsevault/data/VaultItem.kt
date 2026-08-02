@@ -18,6 +18,8 @@ data class VaultItem(
     val category: VaultCategory,
     val network: CardNetwork = CardNetwork.OTHER,
     val lastFourDigits: String = "",
+    val bank: String = "",
+    val isVirtual: Boolean = false,
 
     // Encrypted payload (card number, CVV, expiry, holder name, notes — JSON-encoded then encrypted)
     val encryptedData: ByteArray,
@@ -46,10 +48,13 @@ enum class VaultCategory {
 }
 
 enum class CardNetwork {
-    VISA, MASTERCARD, AMEX, OTHER;
+    VISA, MASTERCARD, TROY, AMEX, OTHER;
 
     companion object {
-        /** Detected from the first 1-2 digits only — same info printed on the card face. */
+        /** Best-effort guess from the first digits — TROY has no single public BIN
+         * range (issued by many Turkish banks under different prefixes), so this
+         * only nails VISA/Mastercard/Amex reliably; TROY/others need the user's
+         * own selection in the add-card screen. */
         fun fromCardNumber(digits: String): CardNetwork = when {
             digits.startsWith("4") -> VISA
             digits.startsWith("34") || digits.startsWith("37") -> AMEX
@@ -58,6 +63,12 @@ enum class CardNetwork {
         }
     }
 }
+
+/** Common Turkish banks for the picker — plaintext, printed on the card itself. */
+val TURKISH_BANKS = listOf(
+    "Ziraat Bankası", "İş Bankası", "Garanti BBVA", "Yapı Kredi", "Akbank",
+    "QNB Finansbank", "Halkbank", "VakıfBank", "TEB", "DenizBank", "ING", "Diğer"
+)
 
 /** Plaintext shape used only in memory, right after decryption — never persisted as-is. */
 data class VaultItemPayload(
