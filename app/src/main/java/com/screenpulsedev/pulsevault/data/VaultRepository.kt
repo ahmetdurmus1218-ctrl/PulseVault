@@ -22,10 +22,13 @@ class VaultRepository(context: Context) {
     ) {
         val json = payloadToJson(payload)
         val blob = VaultCryptoManager.encrypt(cipher, json)
+        val digitsOnly = payload.number.filter { it.isDigit() }
         dao.insert(
             VaultItem(
                 label = label,
                 category = category,
+                network = CardNetwork.fromCardNumber(digitsOnly),
+                lastFourDigits = digitsOnly.takeLast(4),
                 encryptedData = blob.ciphertext,
                 iv = blob.iv
             )

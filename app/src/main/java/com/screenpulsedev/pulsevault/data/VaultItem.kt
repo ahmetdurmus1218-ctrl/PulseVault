@@ -5,15 +5,19 @@ import androidx.room.PrimaryKey
 
 /**
  * Every sensitive field is stored as ciphertext + IV, never as plaintext.
- * "label" (e.g. "İş Bankası Kredi Kartı") stays unencrypted since it's just a
- * display name with no sensitive value on its own — this lets the list screen
- * render without unlocking the vault first.
+ * "label" and the two fields below are the only plaintext fields — same tradeoff
+ * every real banking app makes: a card network logo and its last 4 digits are not
+ * sensitive on their own (they're printed on the physical card, visible to anyone
+ * who glances at it), so keeping them in the clear lets the list screen render a
+ * realistic card preview without requiring a biometric unlock just to browse names.
  */
 @Entity(tableName = "vault_items")
 data class VaultItem(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val label: String,
     val category: VaultCategory,
+    val network: CardNetwork = CardNetwork.OTHER,
+    val lastFourDigits: String = "",
 
     // Encrypted payload (card number, CVV, expiry, holder name, notes — JSON-encoded then encrypted)
     val encryptedData: ByteArray,
@@ -39,6 +43,20 @@ data class VaultItem(
 
 enum class VaultCategory {
     CREDIT_CARD, BANK_ACCOUNT, PASSWORD, NOTE
+}
+
+enum class CardNetwork {
+    VISA, MASTERCARD, AMEX, OTHER;
+
+    companion object {
+        /** Detected from the first 1-2 digits only — same info printed on the card face. */
+        fun fromCardNumber(digits: String): CardNetwork = when {
+            digits.startsWith("4") -> VISA
+            digits.startsWith("34") || digits.startsWith("37") -> AMEX
+            digits.length >= 2 && digits.substring(0, 2).toIntOrNull()?.let { it in 51..55 } == true -> MASTERCARD
+            else -> OTHER
+        }
+    }
 }
 
 /** Plaintext shape used only in memory, right after decryption — never persisted as-is. */
