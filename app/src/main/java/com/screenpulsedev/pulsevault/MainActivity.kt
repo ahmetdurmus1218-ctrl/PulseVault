@@ -2,7 +2,6 @@ package com.screenpulsedev.pulsevault
 
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,14 +9,18 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.screenpulsedev.pulsevault.auth.BiometricAuthManager
+import com.screenpulsedev.pulsevault.auth.PinManager
 import com.screenpulsedev.pulsevault.crypto.VaultCryptoManager
+import com.screenpulsedev.pulsevault.data.CardNetwork
 import com.screenpulsedev.pulsevault.data.VaultCategory
 import com.screenpulsedev.pulsevault.data.VaultItem
 import com.screenpulsedev.pulsevault.data.VaultItemPayload
@@ -25,6 +28,10 @@ import com.screenpulsedev.pulsevault.data.VaultRepository
 import com.screenpulsedev.pulsevault.ui.screens.AddItemScreen
 import com.screenpulsedev.pulsevault.ui.screens.ItemDetailScreen
 import com.screenpulsedev.pulsevault.ui.screens.LockScreen
+import com.screenpulsedev.pulsevault.ui.screens.PinScreen
+import com.screenpulsedev.pulsevault.ui.screens.PinScreenMode
+import com.screenpulsedev.pulsevault.ui.screens.SettingsScreen
+import com.screenpulsedev.pulsevault.ui.screens.SimpleDetailScreen
 import com.screenpulsedev.pulsevault.ui.screens.VaultListScreen
 import com.screenpulsedev.pulsevault.ui.theme.PulseVaultTheme
 import com.screenpulsedev.pulsevault.util.copySensitiveText
@@ -32,16 +39,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import javax.crypto.Cipher
 
-/**
- * Screen-level navigation kept intentionally simple for this first test build:
- * a small sealed state machine instead of full Navigation-Compose, since the
- * whole point of this pass is proving out the security flow end to end.
- */
 sealed interface Screen {
     data object Locked : Screen
+    data object PinEntry : Screen
     data object List : Screen
     data object Add : Screen
+    data object Settings : Screen
+    data object SetPin : Screen
     data class Detail(val item: VaultItem, val payload: VaultItemPayload) : Screen
     data class Edit(val item: VaultItem, val payload: VaultItemPayload) : Screen
 }
@@ -66,14 +72,12 @@ class VaultViewModel(private val repo: VaultRepository) : ViewModel() {
 
     fun goTo(screen: Screen) { _screen.value = screen }
 
+    /** Called whenever the app leaves the foreground — always re-lock from scratch. */
+    fun lock() { _screen.value = Screen.Locked }
+
     fun addItem(
-        cipher: javax.crypto.Cipher,
-        label: String,
-        category: VaultCategory,
-        payload: VaultItemPayload,
-        network: com.screenpulsedev.pulsevault.data.CardNetwork,
-        bank: String,
-        isVirtual: Boolean
+        cipher: Cipher, label: String, category: VaultCategory, payload: VaultItemPayload,
+        network: CardNetwork, bank: String, isVirtual: Boolean
     ) {
         viewModelScope.launch {
             try {
@@ -86,14 +90,8 @@ class VaultViewModel(private val repo: VaultRepository) : ViewModel() {
     }
 
     fun updateItem(
-        cipher: javax.crypto.Cipher,
-        id: Long,
-        label: String,
-        category: VaultCategory,
-        payload: VaultItemPayload,
-        network: com.screenpulsedev.pulsevault.data.CardNetwork,
-        bank: String,
-        isVirtual: Boolean
+        cipher: Cipher, id: Long, label: String, category: VaultCategory, payload: VaultItemPayload,
+        network: CardNetwork, bank: String, isVirtual: Boolean
     ) {
         viewModelScope.launch {
             try {
@@ -105,16 +103,13 @@ class VaultViewModel(private val repo: VaultRepository) : ViewModel() {
         }
     }
 
-    fun decryptAndShow(cipher: javax.crypto.Cipher, item: VaultItem) {
+    fun decryptAndShow(cipher: Cipher, item: VaultItem) {
         viewModelScope.launch {
             try {
                 val payload = repo.decryptItem(cipher, item)
                 _screen.value = Screen.Detail(item, payload)
             } catch (e: Exception) {
-                // Most common cause: this entry was encrypted under an older
-                // Keystore key (e.g. before a security-config change invalidated
-                // the previous key). It can't be recovered — only deleted.
-                _errorEvent.value = "Bu kayıt açılamadı ve kurtarılamaz (eski anahtarla şifrelenmiş olabilir). Kaydı silip yeniden eklemen gerekiyor."
+                _errorEvent.value = "Bu kayıt açılamadı ve kurtarılamaz. Kaydı silip yeniden eklemen gerekiyor."
             }
         }
     }
@@ -134,8 +129,7 @@ class MainActivity : FragmentActivity() {
         factoryProducer = {
             object : androidx.lifecycle.ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
-                override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    VaultViewModel(repo) as T
+                override fun <T : ViewModel> create(modelClass: Class<T>): T = VaultViewModel(repo) as T
             }
         }
     )
@@ -144,9 +138,6 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         VaultCryptoManager.ensureKeyExists()
 
-        // Blocks screenshots, screen recording, and the "recent apps" thumbnail
-        // preview from ever showing this screen's contents — enforced by the OS,
-        // not something a screenshot app can bypass.
         window.setFlags(
             android.view.WindowManager.LayoutParams.FLAG_SECURE,
             android.view.WindowManager.LayoutParams.FLAG_SECURE
@@ -160,6 +151,16 @@ class MainActivity : FragmentActivity() {
             }
         }
     }
+
+    override fun onStop() {
+        super.onStop()
+        // Leaving the foreground (home button, app switcher, another app) always
+        // re-locks — but NOT on a rotation/config-change recreate, which also
+        // triggers onStop and would otherwise be a very annoying false lock.
+        if (!isChangingConfigurations) {
+            viewModel.lock()
+        }
+    }
 }
 
 @Composable
@@ -168,6 +169,8 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
     val items by viewModel.items.collectAsState()
     val errorEvent by viewModel.errorEvent.collectAsState()
     val executor = ContextCompat.getMainExecutor(activity)
+    var appPinEnabled by remember { mutableStateOf(PinManager.isPinSet(activity)) }
+    var pinError by remember { mutableStateOf<String?>(null) }
 
     androidx.compose.runtime.LaunchedEffect(errorEvent) {
         errorEvent?.let {
@@ -176,42 +179,59 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
         }
     }
 
-    when (val current = screen) {
-        is Screen.Locked -> {
-            val crashLog = remember {
-                val f = java.io.File(activity.filesDir, "crash_log.txt")
-                if (f.exists()) f.readText().takeLast(4000) else null
-            }
-            LockScreen(
-                crashLogText = crashLog,
-                onUnlockClick = {
-                    if (!BiometricAuthManager.canAuthenticate(activity)) {
-                        Toast.makeText(
-                            activity,
-                            "Cihazda kilit ekranı ayarlı değil. Ayarlar > Güvenlik'ten parmak izi veya PIN ekle.",
-                            Toast.LENGTH_LONG
-                        ).show()
-                        return@LockScreen
-                    }
-                    try {
-                        BiometricAuthManager.authenticate(
-                            activity = activity,
-                            title = "PulseVault'u Aç",
-                            subtitle = "Devam etmek için kimliğini doğrula",
-                            executor = executor,
-                            onSuccess = { viewModel.goTo(Screen.List) },
-                            onError = { msg -> Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show() }
-                        )
-                    } catch (e: Exception) {
-                        Toast.makeText(activity, "Hata: ${e.message}", Toast.LENGTH_LONG).show()
-                    }
-                }
-            )
+    fun proceedAfterDeviceAuth() {
+        if (PinManager.isPinSet(activity)) {
+            viewModel.goTo(Screen.PinEntry)
+        } else {
+            viewModel.goTo(Screen.List)
         }
+    }
+
+    when (val current = screen) {
+        is Screen.Locked -> LockScreen(
+            onUnlockClick = {
+                if (!BiometricAuthManager.canAuthenticate(activity)) {
+                    Toast.makeText(
+                        activity,
+                        "Cihazda kilit ekranı ayarlı değil. Ayarlar > Güvenlik'ten parmak izi veya PIN ekle.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return@LockScreen
+                }
+                try {
+                    BiometricAuthManager.authenticate(
+                        activity = activity,
+                        title = "PulseVault'u Aç",
+                        subtitle = "Devam etmek için kimliğini doğrula",
+                        executor = executor,
+                        onSuccess = { proceedAfterDeviceAuth() },
+                        onError = { msg -> Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show() }
+                    )
+                } catch (e: Exception) {
+                    Toast.makeText(activity, "Hata: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        )
+
+        is Screen.PinEntry -> PinScreen(
+            mode = PinScreenMode.ENTER,
+            title = "PIN Gir",
+            errorMessage = pinError,
+            onPinEntered = { pin ->
+                if (PinManager.verifyPin(activity, pin)) {
+                    pinError = null
+                    viewModel.goTo(Screen.List)
+                } else {
+                    pinError = "Yanlış PIN, tekrar dene"
+                }
+            },
+            onCancel = { viewModel.lock() }
+        )
 
         is Screen.List -> VaultListScreen(
             items = items,
             onAddClick = { viewModel.goTo(Screen.Add) },
+            onSettingsClick = { viewModel.goTo(Screen.Settings) },
             onItemClick = { item ->
                 BiometricAuthManager.authenticate(
                     activity = activity,
@@ -229,6 +249,32 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
                     onError = { msg -> Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show() }
                 )
             }
+        )
+
+        is Screen.Settings -> SettingsScreen(
+            isAppPinEnabled = appPinEnabled,
+            onToggleAppPin = { enable ->
+                if (enable) {
+                    viewModel.goTo(Screen.SetPin)
+                } else {
+                    PinManager.clearPin(activity)
+                    appPinEnabled = false
+                }
+            },
+            onBack = { viewModel.goTo(Screen.List) }
+        )
+
+        is Screen.SetPin -> PinScreen(
+            mode = PinScreenMode.SET,
+            title = "Yeni PIN Oluştur",
+            onPinEntered = {},
+            onPinCreated = { pin ->
+                PinManager.setPin(activity, pin)
+                appPinEnabled = true
+                Toast.makeText(activity, "PIN oluşturuldu", Toast.LENGTH_SHORT).show()
+                viewModel.goTo(Screen.Settings)
+            },
+            onCancel = { viewModel.goTo(Screen.Settings) }
         )
 
         is Screen.Add -> AddItemScreen(
@@ -252,30 +298,51 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
             onCancel = { viewModel.goTo(Screen.List) }
         )
 
-        is Screen.Detail -> ItemDetailScreen(
-            label = current.item.label,
-            category = current.item.category,
-            network = current.item.network,
-            lastFourDigits = current.item.lastFourDigits,
-            bank = current.item.bank,
-            isVirtual = current.item.isVirtual,
-            payload = current.payload,
-            onCopy = { fieldLabel, value ->
-                copySensitiveText(activity, fieldLabel, value)
-                Toast.makeText(activity, "$fieldLabel kopyalandı (30sn sonra silinir)", Toast.LENGTH_SHORT).show()
-            },
-            onDelete = { viewModel.delete(current.item) },
-            onEdit = { viewModel.goTo(Screen.Edit(current.item, current.payload)) },
-            onBack = { viewModel.goTo(Screen.List) }
-        )
+        is Screen.Detail -> {
+            val isCardLike = current.item.category == VaultCategory.CREDIT_CARD ||
+                current.item.category == VaultCategory.BANK_ACCOUNT
+            if (isCardLike) {
+                ItemDetailScreen(
+                    label = current.item.label,
+                    category = current.item.category,
+                    network = current.item.network,
+                    lastFourDigits = current.item.lastFourDigits,
+                    bank = current.item.bank,
+                    isVirtual = current.item.isVirtual,
+                    payload = current.payload,
+                    onCopy = { fieldLabel, value ->
+                        copySensitiveText(activity, fieldLabel, value)
+                        Toast.makeText(activity, "$fieldLabel kopyalandı (30sn sonra silinir)", Toast.LENGTH_SHORT).show()
+                    },
+                    onDelete = { viewModel.delete(current.item) },
+                    onEdit = { viewModel.goTo(Screen.Edit(current.item, current.payload)) },
+                    onBack = { viewModel.goTo(Screen.List) }
+                )
+            } else {
+                SimpleDetailScreen(
+                    label = current.item.label,
+                    category = current.item.category,
+                    payload = current.payload,
+                    onCopy = { fieldLabel, value ->
+                        copySensitiveText(activity, fieldLabel, value)
+                        Toast.makeText(activity, "$fieldLabel kopyalandı (30sn sonra silinir)", Toast.LENGTH_SHORT).show()
+                    },
+                    onDelete = { viewModel.delete(current.item) },
+                    onEdit = { viewModel.goTo(Screen.Edit(current.item, current.payload)) },
+                    onBack = { viewModel.goTo(Screen.List) }
+                )
+            }
+        }
 
         is Screen.Edit -> AddItemScreen(
-            screenTitle = "Kartı Düzenle",
+            screenTitle = "Düzenle",
             initialLabel = current.item.label,
+            initialCategory = current.item.category,
             initialBank = current.item.bank,
             initialNetwork = current.item.network,
             initialIsVirtual = current.item.isVirtual,
             initialPayload = current.payload,
+            lockCategory = true,
             onSave = { label, category, payload, network, bank, isVirtual ->
                 BiometricAuthManager.authenticate(
                     activity = activity,
@@ -295,5 +362,4 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
             },
             onCancel = { viewModel.goTo(Screen.List) }
         )
-    }
 }

@@ -87,6 +87,8 @@ class VaultRepository(context: Context) {
             put("expiry", p.expiry)
             put("cvv", p.cvv)
             put("notes", p.notes)
+            put("username", p.username)
+            put("password", p.password)
         }.toString()
 
     private fun jsonToPayload(json: String): VaultItemPayload {
@@ -96,7 +98,9 @@ class VaultRepository(context: Context) {
             number = obj.optString("number"),
             expiry = obj.optString("expiry"),
             cvv = obj.optString("cvv"),
-            notes = obj.optString("notes")
+            notes = obj.optString("notes"),
+            username = obj.optString("username"),
+            password = obj.optString("password")
         )
     }
 }

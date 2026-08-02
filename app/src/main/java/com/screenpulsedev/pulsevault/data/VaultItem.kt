@@ -76,5 +76,7 @@ data class VaultItemPayload(
     val number: String = "",       // card number / IBAN
     val expiry: String = "",       // MM/YY
     val cvv: String = "",
-    val notes: String = ""
+    val notes: String = "",        // also used as the body text for NOTE category
+    val username: String = "",     // PASSWORD category
+    val password: String = ""      // PASSWORD category
 )

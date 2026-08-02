@@ -49,12 +49,14 @@ import com.screenpulsedev.pulsevault.ui.components.ExpiryVisualTransformation
 
 @Composable
 fun AddItemScreen(
-    screenTitle: String = "Yeni Kart",
+    screenTitle: String = "Yeni Kayıt",
     initialLabel: String = "",
+    initialCategory: VaultCategory = VaultCategory.CREDIT_CARD,
     initialBank: String = "",
     initialNetwork: CardNetwork? = null,
     initialIsVirtual: Boolean = false,
     initialPayload: VaultItemPayload = VaultItemPayload(),
+    lockCategory: Boolean = false,
     onSave: (
         label: String,
         category: VaultCategory,
@@ -67,17 +69,22 @@ fun AddItemScreen(
 ) {
     BackHandler(onBack = onCancel)
 
+    var category by remember { mutableStateOf(initialCategory) }
     var label by remember { mutableStateOf(initialLabel) }
     var holderName by remember { mutableStateOf(initialPayload.holderName) }
-    var number by remember { mutableStateOf(initialPayload.number.filter { it.isDigit() }) }
+    var number by remember { mutableStateOf(initialPayload.number) }
     var expiry by remember { mutableStateOf(initialPayload.expiry.filter { it.isDigit() }) }
     var cvv by remember { mutableStateOf(initialPayload.cvv) }
     var notes by remember { mutableStateOf(initialPayload.notes) }
+    var username by remember { mutableStateOf(initialPayload.username) }
+    var password by remember { mutableStateOf(initialPayload.password) }
     var bank by remember { mutableStateOf(initialBank) }
     var network by remember { mutableStateOf(initialNetwork) }
     var isVirtual by remember { mutableStateOf(initialIsVirtual) }
 
-    val detectedNetwork = network ?: CardNetwork.fromCardNumber(number)
+    val cardDigitsOnly = number.filter { it.isDigit() }
+    val detectedNetwork = network ?: CardNetwork.fromCardNumber(cardDigitsOnly)
+    val isCardLike = category == VaultCategory.CREDIT_CARD || category == VaultCategory.BANK_ACCOUNT
 
     Scaffold(
         topBar = {
@@ -98,123 +105,192 @@ fun AddItemScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            CreditCardView(
-                label = label.ifBlank { "Yeni Kart" },
-                category = VaultCategory.CREDIT_CARD,
-                network = detectedNetwork,
-                lastFourDigits = number.takeLast(4),
-                bank = bank,
-                isVirtual = isVirtual
-            )
-            Spacer(Modifier.height(20.dp))
+            if (!lockCategory) {
+                Text("Tür", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(
+                        VaultCategory.CREDIT_CARD to "Kart",
+                        VaultCategory.BANK_ACCOUNT to "Hesap",
+                        VaultCategory.PASSWORD to "Şifre",
+                        VaultCategory.NOTE to "Not"
+                    ).forEach { (cat, catLabel) ->
+                        FilterChip(
+                            selected = category == cat,
+                            onClick = { category = cat },
+                            label = { Text(catLabel) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        )
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+            }
+
+            if (isCardLike) {
+                CreditCardView(
+                    label = label.ifBlank { "Yeni Kart" },
+                    category = category,
+                    network = detectedNetwork,
+                    lastFourDigits = cardDigitsOnly.takeLast(4),
+                    bank = bank,
+                    isVirtual = isVirtual
+                )
+                Spacer(Modifier.height(20.dp))
+            }
 
             OutlinedTextField(
                 value = label, onValueChange = { label = it },
-                label = { Text("Etiket (örn. Alışveriş Kartım)") },
+                label = { Text(labelFieldTitle(category)) },
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(12.dp))
 
-            Text("Banka", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(6.dp))
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(TURKISH_BANKS) { bankName ->
-                    FilterChip(
-                        selected = bank == bankName,
-                        onClick = { bank = if (bank == bankName) "" else bankName },
-                        label = { Text(bankName) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+            if (isCardLike) {
+                Text("Banka", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(6.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(TURKISH_BANKS) { bankName ->
+                        FilterChip(
+                            selected = bank == bankName,
+                            onClick = { bank = if (bank == bankName) "" else bankName },
+                            label = { Text(bankName) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                            )
                         )
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+            }
+
+            if (category == VaultCategory.CREDIT_CARD) {
+                Text("Kart Ağı", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(
+                        CardNetwork.TROY to "Troy",
+                        CardNetwork.VISA to "Visa",
+                        CardNetwork.MASTERCARD to "Mastercard",
+                        CardNetwork.AMEX to "Amex"
+                    ).forEach { (net, netLabel) ->
+                        FilterChip(
+                            selected = detectedNetwork == net,
+                            onClick = { network = net },
+                            label = { Text(netLabel) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        )
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Sanal Kart", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                    Switch(checked = isVirtual, onCheckedChange = { isVirtual = it })
+                }
+                Spacer(Modifier.height(16.dp))
+            }
+
+            when (category) {
+                VaultCategory.CREDIT_CARD -> {
+                    OutlinedTextField(
+                        value = holderName, onValueChange = { holderName = it },
+                        label = { Text("Kart Sahibi") }, modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = number,
+                        onValueChange = { input -> number = input.filter { it.isDigit() }.take(19) },
+                        label = { Text("Kart Numarası") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        visualTransformation = CardNumberVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Row(Modifier.fillMaxWidth()) {
+                        OutlinedTextField(
+                            value = expiry,
+                            onValueChange = { input -> expiry = input.filter { it.isDigit() }.take(4) },
+                            label = { Text("Son Kullanma (AA/YY)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            visualTransformation = ExpiryVisualTransformation(),
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        OutlinedTextField(
+                            value = cvv,
+                            onValueChange = { input -> cvv = input.filter { it.isDigit() }.take(4) },
+                            label = { Text("CVV") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                            visualTransformation = PasswordVisualTransformation(),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+
+                VaultCategory.BANK_ACCOUNT -> {
+                    OutlinedTextField(
+                        value = holderName, onValueChange = { holderName = it },
+                        label = { Text("Hesap Sahibi") }, modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = number, onValueChange = { number = it.uppercase() },
+                        label = { Text("IBAN") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                VaultCategory.PASSWORD -> {
+                    OutlinedTextField(
+                        value = username, onValueChange = { username = it },
+                        label = { Text("Kullanıcı Adı / E-posta") }, modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = password, onValueChange = { password = it },
+                        label = { Text("Şifre") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                VaultCategory.NOTE -> {
+                    OutlinedTextField(
+                        value = notes, onValueChange = { notes = it },
+                        label = { Text("Not İçeriği") },
+                        minLines = 5,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
-            Spacer(Modifier.height(16.dp))
 
-            Text("Kart Ağı", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(
-                    CardNetwork.TROY to "Troy",
-                    CardNetwork.VISA to "Visa",
-                    CardNetwork.MASTERCARD to "Mastercard",
-                    CardNetwork.AMEX to "Amex"
-                ).forEach { (net, netLabel) ->
-                    FilterChip(
-                        selected = detectedNetwork == net,
-                        onClick = { network = net },
-                        label = { Text(netLabel) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                        )
-                    )
-                }
-            }
-            Spacer(Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Sanal Kart", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-                Switch(checked = isVirtual, onCheckedChange = { isVirtual = it })
-            }
-            Spacer(Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = holderName, onValueChange = { holderName = it },
-                label = { Text("Kart Sahibi") }, modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(8.dp))
-
-            // Raw digits stay as the actual state; VisualTransformation only changes
-            // what's drawn on screen, so the cursor never jumps while typing/deleting.
-            OutlinedTextField(
-                value = number,
-                onValueChange = { input -> number = input.filter { it.isDigit() }.take(19) },
-                label = { Text("Kart Numarası / IBAN") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                visualTransformation = CardNumberVisualTransformation(),
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(8.dp))
-
-            Row(Modifier.fillMaxWidth()) {
+            if (category != VaultCategory.NOTE) {
+                Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = expiry,
-                    onValueChange = { input -> expiry = input.filter { it.isDigit() }.take(4) },
-                    label = { Text("Son Kullanma (AA/YY)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    visualTransformation = ExpiryVisualTransformation(),
-                    modifier = Modifier.weight(1f)
-                )
-                Spacer(Modifier.width(8.dp))
-                OutlinedTextField(
-                    value = cvv,
-                    onValueChange = { input -> cvv = input.filter { it.isDigit() }.take(4) },
-                    label = { Text("CVV") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.weight(1f)
+                    value = notes, onValueChange = { notes = it },
+                    label = { Text("Not (opsiyonel)") }, modifier = Modifier.fillMaxWidth()
                 )
             }
-            Spacer(Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = notes, onValueChange = { notes = it },
-                label = { Text("Not (opsiyonel)") }, modifier = Modifier.fillMaxWidth()
-            )
             Spacer(Modifier.height(16.dp))
 
             Button(
                 onClick = {
                     onSave(
                         label.ifBlank { "Adsız Kayıt" },
-                        VaultCategory.CREDIT_CARD,
-                        VaultItemPayload(holderName, number, expiry, cvv, notes),
+                        category,
+                        VaultItemPayload(holderName, number, expiry, cvv, notes, username, password),
                         detectedNetwork,
                         bank,
                         isVirtual
@@ -227,4 +303,11 @@ fun AddItemScreen(
             Spacer(Modifier.height(16.dp))
         }
     }
+}
+
+private fun labelFieldTitle(category: VaultCategory): String = when (category) {
+    VaultCategory.CREDIT_CARD -> "Etiket (örn. Alışveriş Kartım)"
+    VaultCategory.BANK_ACCOUNT -> "Etiket (örn. Maaş Hesabım)"
+    VaultCategory.PASSWORD -> "Servis / Site Adı"
+    VaultCategory.NOTE -> "Başlık"
 }
