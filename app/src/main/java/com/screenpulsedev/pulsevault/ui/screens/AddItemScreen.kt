@@ -85,6 +85,7 @@ fun AddItemScreen(
                 label = { Text("Not (opsiyonel)") }, modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(16.dp))
+            val (saveScale, saveInteraction) = com.screenpulsedev.pulsevault.ui.theme.rememberPressScale()
             Button(
                 onClick = {
                     onSave(
@@ -93,7 +94,8 @@ fun AddItemScreen(
                         VaultItemPayload(holderName, number, expiry, cvv, notes)
                     )
                 },
-                modifier = Modifier.fillMaxWidth()
+                interactionSource = saveInteraction,
+                modifier = saveScale.fillMaxWidth()
             ) { Text("Şifrele ve Kaydet") }
             Spacer(Modifier.height(8.dp))
             Button(onClick = onCancel, modifier = Modifier.fillMaxWidth()) { Text("Vazgeç") }

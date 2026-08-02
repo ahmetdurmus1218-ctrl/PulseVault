@@ -4,7 +4,23 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Modern shield silhouette -->
+    <path
+        android:fillColor="#33FFFFFF"
+        android:pathData="M54,20 L78,29 L78,52 C78,68 68,79 54,86 C40,79 30,68 30,52 L30,29 Z" />
+    <!-- Shield outline -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.4"
+        android:pathData="M54,22 L76,30.5 L76,52 C76,66.5 67,76.5 54,83.5 C41,76.5 32,66.5 32,52 L32,30.5 Z" />
+    <!-- Lock body -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,30 C46,30 40,36 40,44 L40,50 L36,50 C33,50 31,52 31,55 L31,75 C31,78 33,80 36,80 L72,80 C75,80 77,78 77,75 L77,55 C77,52 75,50 72,50 L68,50 L68,44 C68,36 62,30 54,30 Z M54,38 C58,38 60,40 60,44 L60,50 L48,50 L48,44 C48,40 50,38 54,38 Z" />
+        android:pathData="M44,50 L44,45 C44,38.9 48.5,34 54,34 C59.5,34 64,38.9 64,45 L64,50 L67,50 C69.2,50 71,51.8 71,54 L71,68 C71,70.2 69.2,72 67,72 L41,72 C38.8,72 37,70.2 37,68 L37,54 C37,51.8 38.8,50 41,50 Z M49,45 L49,50 L59,50 L59,45 C59,41.7 56.6,39 54,39 C51.4,39 49,41.7 49,45 Z" />
+    <!-- Keyhole -->
+    <path
+        android:fillColor="#5B3BFF"
+        android:pathData="M54,57 C55.7,57 57,58.3 57,60 C57,61.2 56.3,62.2 55.3,62.7 L56.5,67 L51.5,67 L52.7,62.7 C51.7,62.2 51,61.2 51,60 C51,58.3 52.3,57 54,57 Z" />
 </vector>
+

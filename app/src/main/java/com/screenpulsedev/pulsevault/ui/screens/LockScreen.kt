@@ -77,9 +77,11 @@ fun LockScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(32.dp))
+        val (unlockScale, unlockInteraction) = com.screenpulsedev.pulsevault.ui.theme.rememberPressScale()
         Button(
             onClick = onUnlockClick,
-            modifier = Modifier
+            interactionSource = unlockInteraction,
+            modifier = unlockScale
                 .fillMaxWidth()
                 .height(52.dp),
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
