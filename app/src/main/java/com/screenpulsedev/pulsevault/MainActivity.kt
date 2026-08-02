@@ -362,4 +362,5 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
             },
             onCancel = { viewModel.goTo(Screen.List) }
         )
+    }
 }
