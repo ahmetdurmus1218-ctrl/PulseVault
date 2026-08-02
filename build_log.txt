@@ -27,8 +27,8 @@ to this project's gradle.properties.
 > Task :app:packageDebugResources
 > Task :app:createDebugCompatibleScreenManifests
 > Task :app:extractDeepLinksDebug
-> Task :app:mergeDebugResources
 > Task :app:parseDebugLocalResources
+> Task :app:mergeDebugResources
 > Task :app:processDebugMainManifest
 > Task :app:processDebugManifest
 > Task :app:processDebugManifestForPackage
@@ -53,9 +53,8 @@ to this project's gradle.properties.
 > Task :app:mergeExtDexDebug
 
 > Task :app:compileDebugKotlin FAILED
-e: file:///home/runner/work/PulseVault/PulseVault/app/src/main/java/com/screenpulsedev/pulsevault/ui/theme/PressScale.kt:26:22 Type 'State<Boolean>' has no method 'getValue(Nothing?, KProperty<*>)' and thus it cannot serve as a delegate
-e: file:///home/runner/work/PulseVault/PulseVault/app/src/main/java/com/screenpulsedev/pulsevault/ui/theme/PressScale.kt:27:18 Type 'State<Float>' has no method 'getValue(Nothing?, KProperty<*>)' and thus it cannot serve as a delegate
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1785645045378.json
+e: file:///home/runner/work/PulseVault/PulseVault/app/src/main/java/com/screenpulsedev/pulsevault/ui/components/CardFlip.kt:21:21 Type 'State<Float>' has no method 'getValue(Nothing?, KProperty<*>)' and thus it cannot serve as a delegate
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1785666447982.json
 
 FAILURE: Build failed with an exception.
 
@@ -264,5 +263,5 @@ Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilat
 	... 2 more
 
 
-BUILD FAILED in 35s
+BUILD FAILED in 26s
 29 actionable tasks: 29 executed
