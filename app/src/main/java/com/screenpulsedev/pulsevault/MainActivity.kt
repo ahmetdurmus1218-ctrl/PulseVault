@@ -72,8 +72,23 @@ class VaultViewModel(private val repo: VaultRepository) : ViewModel() {
 
     fun goTo(screen: Screen) { _screen.value = screen }
 
-    /** Called whenever the app leaves the foreground — always re-lock from scratch. */
-    fun lock() { _screen.value = Screen.Locked }
+    private var savedScreen: Screen = Screen.List
+
+    /** Called whenever the app leaves the foreground — remembers where we were. */
+    fun lock() {
+        val current = _screen.value
+        if (current !is Screen.Locked && current !is Screen.PinEntry) {
+            savedScreen = current
+        }
+        _screen.value = Screen.Locked
+    }
+
+    /** Called after a successful re-auth — returns to whatever screen we were on. */
+    fun restoreAfterUnlock() { _screen.value = savedScreen }
+
+    fun toggleFavorite(item: VaultItem) {
+        viewModelScope.launch { repo.toggleFavorite(item) }
+    }
 
     fun addItem(
         cipher: Cipher, label: String, category: VaultCategory, payload: VaultItemPayload,
@@ -185,7 +200,7 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
         if (PinManager.isPinSet(activity)) {
             viewModel.goTo(Screen.PinEntry)
         } else {
-            viewModel.goTo(Screen.List)
+            viewModel.restoreAfterUnlock()
         }
     }
 
@@ -222,7 +237,7 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
             onPinEntered = { pin ->
                 if (PinManager.verifyPin(activity, pin)) {
                     pinError = null
-                    viewModel.goTo(Screen.List)
+                    viewModel.restoreAfterUnlock()
                 } else {
                     pinError = "Yanlış PIN, tekrar dene"
                 }
@@ -311,6 +326,7 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
                     lastFourDigits = current.item.lastFourDigits,
                     bank = current.item.bank,
                     isVirtual = current.item.isVirtual,
+                    isFavorite = current.item.isFavorite,
                     payload = current.payload,
                     onCopy = { fieldLabel, value ->
                         copySensitiveText(activity, fieldLabel, value)
@@ -318,12 +334,14 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
                     },
                     onDelete = { viewModel.delete(current.item) },
                     onEdit = { viewModel.goTo(Screen.Edit(current.item, current.payload)) },
+                    onToggleFavorite = { viewModel.toggleFavorite(current.item) },
                     onBack = { viewModel.goTo(Screen.List) }
                 )
             } else {
                 SimpleDetailScreen(
                     label = current.item.label,
                     category = current.item.category,
+                    isFavorite = current.item.isFavorite,
                     payload = current.payload,
                     onCopy = { fieldLabel, value ->
                         copySensitiveText(activity, fieldLabel, value)
@@ -331,6 +349,7 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
                     },
                     onDelete = { viewModel.delete(current.item) },
                     onEdit = { viewModel.goTo(Screen.Edit(current.item, current.payload)) },
+                    onToggleFavorite = { viewModel.toggleFavorite(current.item) },
                     onBack = { viewModel.goTo(Screen.List) }
                 )
             }

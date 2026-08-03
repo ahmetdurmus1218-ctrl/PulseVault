@@ -7,14 +7,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -34,20 +37,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.screenpulsedev.pulsevault.data.VaultCategory
 import com.screenpulsedev.pulsevault.data.VaultItemPayload
+import com.screenpulsedev.pulsevault.ui.components.SmallActionButton
 
 @Composable
 fun SimpleDetailScreen(
     label: String,
     category: VaultCategory,
+    isFavorite: Boolean,
     payload: VaultItemPayload,
     onCopy: (fieldLabel: String, value: String) -> Unit,
     onDelete: () -> Unit,
     onEdit: () -> Unit,
+    onToggleFavorite: () -> Unit,
     onBack: () -> Unit
 ) {
     BackHandler(onBack = onBack)
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var passwordVisible by remember { mutableStateOf(false) }
+    var favoriteNow by remember(isFavorite) { mutableStateOf(isFavorite) }
 
     Scaffold(
         topBar = {
@@ -59,8 +66,12 @@ fun SimpleDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = onEdit) {
-                        Icon(Icons.Filled.Edit, contentDescription = "Düzenle")
+                    IconButton(onClick = { favoriteNow = !favoriteNow; onToggleFavorite() }) {
+                        Icon(
+                            if (favoriteNow) Icons.Filled.Star else Icons.Outlined.StarOutline,
+                            contentDescription = "Favori",
+                            tint = if (favoriteNow) androidx.compose.ui.graphics.Color(0xFFFFC107) else MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
             )
@@ -114,13 +125,19 @@ fun SimpleDetailScreen(
                 style = MaterialTheme.typography.bodySmall
             )
             Spacer(Modifier.height(16.dp))
-            Button(
-                onClick = { showDeleteConfirm = true },
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                horizontalArrangement = Arrangement.Center
             ) {
-                Icon(Icons.Filled.Delete, contentDescription = null)
-                Text("  Sil")
+                SmallActionButton(icon = Icons.Filled.Edit, label = "Düzenle", onClick = onEdit)
+                Spacer(Modifier.width(12.dp))
+                SmallActionButton(
+                    icon = Icons.Filled.Delete,
+                    label = "Sil",
+                    onClick = { showDeleteConfirm = true },
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError
+                )
             }
         }
     }

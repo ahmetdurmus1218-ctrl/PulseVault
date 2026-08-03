@@ -20,6 +20,7 @@ data class VaultItem(
     val lastFourDigits: String = "",
     val bank: String = "",
     val isVirtual: Boolean = false,
+    val isFavorite: Boolean = false,
 
     // Encrypted payload (card number, CVV, expiry, holder name, notes — JSON-encoded then encrypted)
     val encryptedData: ByteArray,

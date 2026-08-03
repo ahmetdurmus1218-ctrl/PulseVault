@@ -39,7 +39,14 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
     }
 }
 
-@Database(entities = [VaultItem::class], version = 3, exportSchema = false)
+/** v3 -> v4: adds the favorite flag (plaintext, purely a UI convenience). */
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE vault_items ADD COLUMN isFavorite INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
+@Database(entities = [VaultItem::class], version = 4, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class VaultDatabase : RoomDatabase() {
     abstract fun vaultDao(): VaultDao
@@ -53,7 +60,7 @@ abstract class VaultDatabase : RoomDatabase() {
                     context.applicationContext,
                     VaultDatabase::class.java,
                     "pulsevault.db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { INSTANCE = it }
             }
     }
 }

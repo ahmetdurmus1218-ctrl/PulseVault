@@ -52,7 +52,15 @@ fun CardStack(
         val cardHeight = cardWidth / 1.75f
         val expandedStep = cardHeight + expandedGap
         val n = items.size
-        val stepNow = androidx.compose.ui.unit.lerp(collapsedStep, expandedStep, progress.value)
+
+        // Cap how tall the COLLAPSED stack can ever get, regardless of how many
+        // cards exist — otherwise 10+ cards would each add a fixed 42dp peek and
+        // the "collapsed" stack would grow to fill (and overflow) the screen.
+        val maxCollapsedPeekTotal = 168.dp
+        val collapsedStepNow = if (n <= 1) collapsedStep
+        else minOf(collapsedStep, maxCollapsedPeekTotal / (n - 1))
+
+        val stepNow = androidx.compose.ui.unit.lerp(collapsedStepNow, expandedStep, progress.value)
         val containerHeight = cardHeight + stepNow * (n - 1).coerceAtLeast(0)
 
         fun settle(target: Float) {
@@ -70,7 +78,7 @@ fun CardStack(
                 .height(containerHeight)
                 .pointerInput(n) {
                     val totalDragRangePx = with(density) {
-                        (expandedStep - collapsedStep).toPx() * (n - 1).coerceAtLeast(1)
+                        (expandedStep - collapsedStepNow).toPx() * (n - 1).coerceAtLeast(1)
                     }
                     detectVerticalDragGestures(
                         onDragEnd = { settle(if (progress.value > 0.35f) 1f else 0f) },

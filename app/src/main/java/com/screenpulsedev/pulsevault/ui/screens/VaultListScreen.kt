@@ -5,7 +5,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,8 +25,12 @@ import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SortByAlpha
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,8 +39,11 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,8 +58,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.screenpulsedev.pulsevault.data.VaultCategory
 import com.screenpulsedev.pulsevault.data.VaultItem
-import com.screenpulsedev.pulsevault.ui.components.CreditCardView
+import com.screenpulsedev.pulsevault.ui.components.CardStack
 import com.screenpulsedev.pulsevault.ui.theme.rememberPressScale
+
+private enum class VaultTab(val label: String) {
+    ALL("Tümü"), REAL("Gerçek"), VIRTUAL("Sanal"), FAVORITES("Favoriler"),
+    ACCOUNTS("Hesaplar"), PASSWORDS("Şifreler"), NOTES("Notlar")
+}
+
+private enum class SortMode(val label: String) {
+    BANK_AZ("Banka (A-Z)"), LABEL_AZ("Etiket (A-Z)"), NEWEST("Yeni Eklenen"), OLDEST("Eski Eklenen")
+}
 
 @Composable
 fun VaultListScreen(
@@ -64,28 +79,82 @@ fun VaultListScreen(
 ) {
     val (fabScale, fabInteraction) = rememberPressScale(pressedScale = 0.9f)
     var query by remember { mutableStateOf("") }
+    var selectedTab by remember { mutableStateOf(VaultTab.ALL) }
+    var sortMode by remember { mutableStateOf(SortMode.NEWEST) }
+    var sortMenuOpen by remember { mutableStateOf(false) }
 
-    val filtered = remember(items, query) {
+    val searched = remember(items, query) {
         if (query.isBlank()) items
         else items.filter {
             it.label.contains(query, ignoreCase = true) || it.bank.contains(query, ignoreCase = true)
         }
     }
 
+    val tabbed = remember(searched, selectedTab) {
+        when (selectedTab) {
+            VaultTab.ALL -> searched
+            VaultTab.REAL -> searched.filter {
+                (it.category == VaultCategory.CREDIT_CARD || it.category == VaultCategory.BANK_ACCOUNT) && !it.isVirtual
+            }
+            VaultTab.VIRTUAL -> searched.filter { it.isVirtual }
+            VaultTab.FAVORITES -> searched.filter { it.isFavorite }
+            VaultTab.ACCOUNTS -> searched.filter { it.category == VaultCategory.BANK_ACCOUNT }
+            VaultTab.PASSWORDS -> searched.filter { it.category == VaultCategory.PASSWORD }
+            VaultTab.NOTES -> searched.filter { it.category == VaultCategory.NOTE }
+        }
+    }
+
+    val filtered = remember(tabbed, sortMode) {
+        when (sortMode) {
+            SortMode.BANK_AZ -> tabbed.sortedBy { it.bank.ifBlank { "\uFFFF" } }
+            SortMode.LABEL_AZ -> tabbed.sortedBy { it.label.lowercase() }
+            SortMode.NEWEST -> tabbed.sortedByDescending { it.createdAt }
+            SortMode.OLDEST -> tabbed.sortedBy { it.createdAt }
+        }
+    }
+
     Scaffold(
-        containerColor = androidx.compose.ui.graphics.Color.Transparent,
+        containerColor = Color.Transparent,
         topBar = {
-            TopAppBar(
-                title = { Text("PulseVault", fontWeight = FontWeight.Bold) },
-                colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
-                    containerColor = androidx.compose.ui.graphics.Color.Transparent
-                ),
-                actions = {
-                    IconButton(onClick = onSettingsClick) {
-                        Icon(Icons.Filled.Settings, contentDescription = "Ayarlar")
+            Column {
+                TopAppBar(
+                    title = { Text("PulseVault", fontWeight = FontWeight.Bold) },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+                    actions = {
+                        Box {
+                            IconButton(onClick = { sortMenuOpen = true }) {
+                                Icon(Icons.Filled.SortByAlpha, contentDescription = "Sırala")
+                            }
+                            DropdownMenu(expanded = sortMenuOpen, onDismissRequest = { sortMenuOpen = false }) {
+                                SortMode.entries.forEach { mode ->
+                                    DropdownMenuItem(
+                                        text = { Text(mode.label) },
+                                        onClick = { sortMode = mode; sortMenuOpen = false }
+                                    )
+                                }
+                            }
+                        }
+                        IconButton(onClick = onSettingsClick) {
+                            Icon(Icons.Filled.Settings, contentDescription = "Ayarlar")
+                        }
+                    }
+                )
+                if (items.isNotEmpty()) {
+                    ScrollableTabRow(
+                        selectedTabIndex = selectedTab.ordinal,
+                        containerColor = Color.Transparent,
+                        edgePadding = 12.dp
+                    ) {
+                        VaultTab.entries.forEach { tab ->
+                            Tab(
+                                selected = selectedTab == tab,
+                                onClick = { selectedTab = tab },
+                                text = { Text(tab.label) }
+                            )
+                        }
                     }
                 }
-            )
+            }
         },
         floatingActionButton = {
             FloatingActionButton(
@@ -127,10 +196,10 @@ fun VaultListScreen(
                     it.category != VaultCategory.CREDIT_CARD && it.category != VaultCategory.BANK_ACCOUNT
                 }
 
-                androidx.compose.foundation.lazy.LazyColumn {
+                LazyColumn {
                     if (cardItems.isNotEmpty()) {
                         item(key = "card_stack") {
-                            com.screenpulsedev.pulsevault.ui.components.CardStack(
+                            CardStack(
                                 items = cardItems,
                                 onItemClick = onItemClick,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -216,6 +285,11 @@ private fun SimpleEntryRow(item: VaultItem, onClick: () -> Unit) {
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+                }
+            },
+            trailingContent = {
+                if (item.isFavorite) {
+                    Icon(Icons.Filled.Star, contentDescription = null, tint = Color(0xFFFFC107), modifier = Modifier.size(18.dp))
                 }
             },
             colors = ListItemDefaults.colors(containerColor = Color.Transparent),

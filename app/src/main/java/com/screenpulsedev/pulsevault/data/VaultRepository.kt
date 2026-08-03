@@ -80,6 +80,9 @@ class VaultRepository(context: Context) {
 
     suspend fun deleteItem(item: VaultItem) = dao.delete(item)
 
+    /** No re-encryption needed — favorite is a plaintext UI-only flag. */
+    suspend fun toggleFavorite(item: VaultItem) = dao.update(item.copy(isFavorite = !item.isFavorite))
+
     private fun payloadToJson(p: VaultItemPayload): String =
         JSONObject().apply {
             put("holderName", p.holderName)
