@@ -17,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -34,12 +35,14 @@ fun CreditCardBackView(
     onCopy: (fieldLabel: String, value: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val shape = RoundedCornerShape(20.dp)
     Box(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(1.75f)
-            .clip(RoundedCornerShape(20.dp))
-            .background(brush = Brush.linearGradient(listOf(Color(0xFF232526), Color(0xFF3A3D42))))
+            .shadow(elevation = 14.dp, shape = shape, ambientColor = Color.Black.copy(alpha = 0.35f), spotColor = Color.Black.copy(alpha = 0.5f))
+            .clip(shape)
+            .background(brush = Brush.linearGradient(listOf(Color(0xFF3A3D42), Color(0xFF232526), Color(0xFF141516))))
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             Spacer(modifier = Modifier.height(18.dp))
