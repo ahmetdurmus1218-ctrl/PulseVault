@@ -146,7 +146,9 @@ class MainActivity : FragmentActivity() {
         setContent {
             PulseVaultTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    VaultApp(viewModel = viewModel, activity = this)
+                    com.screenpulsedev.pulsevault.ui.theme.GlowBackdrop {
+                        VaultApp(viewModel = viewModel, activity = this)
+                    }
                 }
             }
         }

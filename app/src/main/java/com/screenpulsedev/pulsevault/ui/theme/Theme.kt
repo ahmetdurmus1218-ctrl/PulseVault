@@ -1,6 +1,5 @@
 package com.screenpulsedev.pulsevault.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
@@ -14,16 +13,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 private val PulseDark = darkColorScheme(
-    primary = Color(0xFF8B9CFF),
-    onPrimary = Color(0xFF15173A),
-    primaryContainer = Color(0xFF37398F),
-    secondary = Color(0xFFB08BFF),
-    tertiary = Color(0xFF7BD9C9),
-    background = Color(0xFF0E0F17),
-    surface = Color(0xFF171923),
-    surfaceVariant = Color(0xFF20232F),
+    primary = Color(0xFF5B7CFF),
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFF26305E),
+    secondary = Color(0xFF7B5CFF),
+    tertiary = Color(0xFF4FD1C5),
+    background = Color(0xFF090B14),
+    surface = Color(0xFF111422),
+    surfaceVariant = Color(0xFF1A1E33),
     error = Color(0xFFFF6B6B),
-    onSurfaceVariant = Color(0xFFA7ABC2)
+    onSurfaceVariant = Color(0xFF9CA3C4)
 )
 
 private val PulseLight = lightColorScheme(
@@ -59,7 +58,7 @@ private val PulseTypography = Typography(
 
 @Composable
 fun PulseVaultTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = true, // Always dark — matches the app's visual identity
     content: @Composable () -> Unit
 ) {
     MaterialTheme(
