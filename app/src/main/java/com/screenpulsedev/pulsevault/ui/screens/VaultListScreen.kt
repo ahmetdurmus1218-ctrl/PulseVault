@@ -116,16 +116,29 @@ fun VaultListScreen(
                     Text("Sonuç bulunamadı", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
-                LazyColumn {
-                    itemsIndexed(filtered, key = { _, item -> item.id }) { index, item ->
-                        AnimatedCardEntry(delayMillis = index * 60) {
-                            if (item.category == VaultCategory.CREDIT_CARD || item.category == VaultCategory.BANK_ACCOUNT) {
-                                CardEntryRow(item = item, onClick = { onItemClick(item) })
-                            } else {
-                                SimpleEntryRow(item = item, onClick = { onItemClick(item) })
-                            }
+                val cardItems = filtered.filter {
+                    it.category == VaultCategory.CREDIT_CARD || it.category == VaultCategory.BANK_ACCOUNT
+                }
+                val otherItems = filtered.filter {
+                    it.category != VaultCategory.CREDIT_CARD && it.category != VaultCategory.BANK_ACCOUNT
+                }
+
+                androidx.compose.foundation.lazy.LazyColumn {
+                    if (cardItems.isNotEmpty()) {
+                        item(key = "card_stack") {
+                            com.screenpulsedev.pulsevault.ui.components.CardStack(
+                                items = cardItems,
+                                onItemClick = onItemClick,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
                         }
                     }
+                    itemsIndexed(otherItems, key = { _, item -> item.id }) { index, item ->
+                        AnimatedCardEntry(delayMillis = index * 60) {
+                            SimpleEntryRow(item = item, onClick = { onItemClick(item) })
+                        }
+                    }
+                    item(key = "bottom_spacer") { Spacer(modifier = Modifier.height(80.dp)) }
                 }
             }
         }
@@ -173,30 +186,6 @@ private fun AnimatedCardEntry(delayMillis: Int, content: @Composable () -> Unit)
         enter = fadeIn(tween(280)) + slideInVertically(tween(280)) { it / 4 }
     ) {
         content()
-    }
-}
-
-@Composable
-private fun CardEntryRow(item: VaultItem, onClick: () -> Unit) {
-    val (scale, interaction) = rememberPressScale()
-    Box(
-        modifier = scale
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-    ) {
-        CreditCardView(
-            label = item.label,
-            category = item.category,
-            network = item.network,
-            lastFourDigits = item.lastFourDigits,
-            bank = item.bank,
-            isVirtual = item.isVirtual,
-            modifier = Modifier.clickable(
-                interactionSource = interaction,
-                indication = androidx.compose.foundation.LocalIndication.current,
-                onClick = onClick
-            )
-        )
     }
 }
 
