@@ -48,6 +48,7 @@ sealed interface Screen {
     data object Add : Screen
     data object Settings : Screen
     data object SetPin : Screen
+    data object AccessibilityWarning : Screen
     data class Detail(val item: VaultItem, val payload: VaultItemPayload) : Screen
     data class Edit(val item: VaultItem, val payload: VaultItemPayload) : Screen
 }
@@ -203,17 +204,11 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
     }
 
     fun proceedAfterDeviceAuth() {
-        if (PinManager.isPinSet(activity)) {
-            viewModel.goTo(Screen.PinEntry)
-        } else {
-            viewModel.restoreAfterUnlock()
-        }
-        if (com.screenpulsedev.pulsevault.auth.hasActiveAccessibilityServices(activity)) {
-            Toast.makeText(
-                activity,
-                "Uyarı: Cihazda ekranı okuyabilen bir erişilebilirlik servisi aktif. Tanımadığın bir uygulamaysa kapatmanı öneririz.",
-                Toast.LENGTH_LONG
-            ).show()
+        val risky = com.screenpulsedev.pulsevault.auth.hasActiveAccessibilityServices(activity)
+        when {
+            risky -> viewModel.goTo(Screen.AccessibilityWarning)
+            PinManager.isPinSet(activity) -> viewModel.goTo(Screen.PinEntry)
+            else -> viewModel.restoreAfterUnlock()
         }
     }
 
@@ -251,18 +246,29 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
                 if (PinManager.verifyPin(activity, pin)) {
                     pinError = null
                     viewModel.restoreAfterUnlock()
-                    if (com.screenpulsedev.pulsevault.auth.hasActiveAccessibilityServices(activity)) {
-                        Toast.makeText(
-                            activity,
-                            "Uyarı: Cihazda ekranı okuyabilen bir erişilebilirlik servisi aktif. Tanımadığın bir uygulamaysa kapatmanı öneririz.",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
                 } else {
                     pinError = "Yanlış PIN, tekrar dene"
                 }
             },
             onCancel = { viewModel.lock() }
+        )
+
+        is Screen.AccessibilityWarning -> com.screenpulsedev.pulsevault.ui.screens.AccessibilityWarningScreen(
+            onOpenSettings = {
+                try {
+                    activity.startActivity(android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                } catch (e: Exception) {
+                    Toast.makeText(activity, "Ayarlar açılamadı", Toast.LENGTH_SHORT).show()
+                }
+            },
+            onProceedAnyway = {
+                if (PinManager.isPinSet(activity)) {
+                    viewModel.goTo(Screen.PinEntry)
+                } else {
+                    viewModel.restoreAfterUnlock()
+                }
+            },
+            onLock = { viewModel.lock() }
         )
 
         is Screen.List -> VaultListScreen(
