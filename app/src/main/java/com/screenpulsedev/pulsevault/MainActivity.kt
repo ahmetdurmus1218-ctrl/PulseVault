@@ -176,6 +176,12 @@ class MainActivity : FragmentActivity() {
         // triggers onStop and would otherwise be a very annoying false lock.
         if (!isChangingConfigurations) {
             viewModel.lock()
+            // Don't wait for the 30s auto-clear timer once we're backgrounded —
+            // wipe anything we copied immediately, shrinking the exposure window.
+            try {
+                val clipboard = getSystemService(android.content.ClipboardManager::class.java)
+                clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("", ""))
+            } catch (_: Exception) { /* best-effort */ }
         }
     }
 }
@@ -201,6 +207,13 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
             viewModel.goTo(Screen.PinEntry)
         } else {
             viewModel.restoreAfterUnlock()
+        }
+        if (com.screenpulsedev.pulsevault.auth.hasActiveAccessibilityServices(activity)) {
+            Toast.makeText(
+                activity,
+                "Uyarı: Cihazda ekranı okuyabilen bir erişilebilirlik servisi aktif. Tanımadığın bir uygulamaysa kapatmanı öneririz.",
+                Toast.LENGTH_LONG
+            ).show()
         }
     }
 
@@ -238,6 +251,13 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
                 if (PinManager.verifyPin(activity, pin)) {
                     pinError = null
                     viewModel.restoreAfterUnlock()
+                    if (com.screenpulsedev.pulsevault.auth.hasActiveAccessibilityServices(activity)) {
+                        Toast.makeText(
+                            activity,
+                            "Uyarı: Cihazda ekranı okuyabilen bir erişilebilirlik servisi aktif. Tanımadığın bir uygulamaysa kapatmanı öneririz.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
                 } else {
                     pinError = "Yanlış PIN, tekrar dene"
                 }
