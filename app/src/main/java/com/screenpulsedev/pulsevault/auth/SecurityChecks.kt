@@ -1,8 +1,8 @@
 package com.screenpulsedev.pulsevault.auth
 
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Context
 import android.view.accessibility.AccessibilityManager
-import android.view.accessibility.AccessibilityServiceInfo
 
 /**
  * Checks whether any accessibility service is currently active on the device.
