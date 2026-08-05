@@ -60,7 +60,7 @@ fun CardStack(
     val scope = rememberCoroutineScope()
     val progress = remember { Animatable(0f) }
 
-    val collapsedStep = 70.dp
+    val collapsedStep = 40.dp
     val expandedGap = 14.dp
 
     fun settle(target: Float) {
@@ -79,7 +79,7 @@ fun CardStack(
             // Cap how tall the COLLAPSED stack can ever get, regardless of how many
             // cards exist — otherwise many cards would each add a fixed peek and
             // the "collapsed" stack would grow to fill (and overflow) the screen.
-            val maxCollapsedPeekTotal = 320.dp
+            val maxCollapsedPeekTotal = 200.dp
             val collapsedStepNow = if (n <= 1) collapsedStep
             else minOf(collapsedStep, maxCollapsedPeekTotal / (n - 1))
 
@@ -113,6 +113,12 @@ fun CardStack(
             ) {
                 items.forEachIndexed { index, item ->
                     val offsetY = stepNow * index
+                    // Only the front card (or every card once fully spread out) shows
+                    // the bottom-row details (network badge, masked number, chip) —
+                    // cards still tucked behind others only reveal a slim peek, and
+                    // nothing there can ever get visually clipped since we simply
+                    // don't draw it until there's room to show it in full.
+                    val showFull = index == 0 || progress.value > 0.98f
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -128,6 +134,7 @@ fun CardStack(
                             lastFourDigits = item.lastFourDigits,
                             bank = item.bank,
                             isVirtual = item.isVirtual,
+                            showFullDetails = showFull,
                             modifier = scale.then(
                                 Modifier.clickable(
                                     interactionSource = interaction,

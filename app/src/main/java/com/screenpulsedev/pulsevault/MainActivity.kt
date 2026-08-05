@@ -154,12 +154,10 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         VaultCryptoManager.ensureKeyExists()
 
-        // TEMPORARILY DISABLED for debugging a card-rendering issue — the person
-        // can't otherwise send a screenshot. Re-enable once diagnosed.
-        // window.setFlags(
-        //     android.view.WindowManager.LayoutParams.FLAG_SECURE,
-        //     android.view.WindowManager.LayoutParams.FLAG_SECURE
-        // )
+        window.setFlags(
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+            android.view.WindowManager.LayoutParams.FLAG_SECURE
+        )
 
         setContent {
             PulseVaultTheme {

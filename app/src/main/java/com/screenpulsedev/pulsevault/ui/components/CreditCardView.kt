@@ -50,7 +50,8 @@ fun CreditCardView(
     lastFourDigits: String,
     bank: String,
     isVirtual: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showFullDetails: Boolean = true
 ) {
     val shape = RoundedCornerShape(20.dp)
     Box(
@@ -135,33 +136,35 @@ fun CreditCardView(
             }
 
             Spacer(modifier = Modifier.height(10.dp))
-            if (category == VaultCategory.CREDIT_CARD) {
-                EmvChip()
-            }
-            Spacer(modifier = Modifier.weight(1f))
+            if (showFullDetails) {
+                if (category == VaultCategory.CREDIT_CARD) {
+                    EmvChip()
+                }
+                Spacer(modifier = Modifier.weight(1f))
 
-            if (category == VaultCategory.CREDIT_CARD && lastFourDigits.isNotBlank()) {
-                Text(
-                    text = "••••  ••••  ••••  $lastFourDigits",
-                    color = Color.White,
-                    fontSize = 19.sp,
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = 1.sp
-                )
-                Spacer(modifier = Modifier.height(14.dp))
-            }
+                if (category == VaultCategory.CREDIT_CARD && lastFourDigits.isNotBlank()) {
+                    Text(
+                        text = "••••  ••••  ••••  $lastFourDigits",
+                        color = Color.White,
+                        fontSize = 19.sp,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 1.sp
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Bottom
-            ) {
-                Text(
-                    text = categoryLabel(category),
-                    color = Color.White.copy(alpha = 0.75f),
-                    fontSize = 11.sp
-                )
-                NetworkBadge(network)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Text(
+                        text = categoryLabel(category),
+                        color = Color.White.copy(alpha = 0.75f),
+                        fontSize = 11.sp
+                    )
+                    NetworkBadge(network)
+                }
             }
         }
     }
