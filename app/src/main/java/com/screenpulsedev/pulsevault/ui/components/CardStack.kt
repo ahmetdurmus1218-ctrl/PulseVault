@@ -60,7 +60,7 @@ fun CardStack(
     val scope = rememberCoroutineScope()
     val progress = remember { Animatable(0f) }
 
-    val collapsedStep = 42.dp
+    val collapsedStep = 56.dp
     val expandedGap = 14.dp
 
     fun settle(target: Float) {
@@ -79,7 +79,7 @@ fun CardStack(
             // Cap how tall the COLLAPSED stack can ever get, regardless of how many
             // cards exist — otherwise many cards would each add a fixed peek and
             // the "collapsed" stack would grow to fill (and overflow) the screen.
-            val maxCollapsedPeekTotal = 168.dp
+            val maxCollapsedPeekTotal = 260.dp
             val collapsedStepNow = if (n <= 1) collapsedStep
             else minOf(collapsedStep, maxCollapsedPeekTotal / (n - 1))
 
