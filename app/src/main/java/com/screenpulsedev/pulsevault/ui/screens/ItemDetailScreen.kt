@@ -52,6 +52,7 @@ fun ItemDetailScreen(
     isFavorite: Boolean,
     payload: VaultItemPayload,
     onCopy: (fieldLabel: String, value: String) -> Unit,
+    onRequestAuth: (onGranted: () -> Unit) -> Unit,
     onDelete: () -> Unit,
     onEdit: () -> Unit,
     onToggleFavorite: () -> Unit,
@@ -98,7 +99,7 @@ fun ItemDetailScreen(
                         isVirtual = isVirtual
                     )
                 },
-                back = { CreditCardBackView(payload = payload, onCopy = onCopy) }
+                back = { CreditCardBackView(payload = payload, onCopy = onCopy, onRequestAuth = onRequestAuth) }
             )
             Spacer(Modifier.height(12.dp))
 

@@ -358,6 +358,16 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
                         copySensitiveText(activity, fieldLabel, value)
                         Toast.makeText(activity, "$fieldLabel kopyalandı (30sn sonra silinir)", Toast.LENGTH_SHORT).show()
                     },
+                    onRequestAuth = { onGranted ->
+                        BiometricAuthManager.authenticate(
+                            activity = activity,
+                            title = "Bu Alanı Göster",
+                            subtitle = "Kimliğini doğrula",
+                            executor = executor,
+                            onSuccess = onGranted,
+                            onError = { msg -> Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show() }
+                        )
+                    },
                     onDelete = { viewModel.delete(current.item) },
                     onEdit = { viewModel.goTo(Screen.Edit(current.item, current.payload)) },
                     onToggleFavorite = { viewModel.toggleFavorite(current.item) },
