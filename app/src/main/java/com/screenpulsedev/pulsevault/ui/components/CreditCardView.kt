@@ -161,7 +161,10 @@ fun CreditCardView(
                     Text(
                         text = categoryLabel(category),
                         color = Color.White.copy(alpha = 0.75f),
-                        fontSize = 11.sp
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false).padding(end = 8.dp)
                     )
                     NetworkBadge(network)
                 }
