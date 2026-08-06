@@ -228,12 +228,9 @@ fun AddItemScreen(
                             modifier = Modifier.weight(1f)
                         )
                         Spacer(Modifier.width(8.dp))
-                        OutlinedTextField(
+                        com.screenpulsedev.pulsevault.ui.components.SecureCvvField(
                             value = cvv,
-                            onValueChange = { input -> cvv = input.filter { it.isDigit() }.take(4) },
-                            label = { Text("CVV") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                            visualTransformation = PasswordVisualTransformation(),
+                            onValueChange = { cvv = it },
                             modifier = Modifier.weight(1f)
                         )
                     }
