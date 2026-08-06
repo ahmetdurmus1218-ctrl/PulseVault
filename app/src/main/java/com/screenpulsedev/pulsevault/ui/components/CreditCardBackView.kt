@@ -73,7 +73,7 @@ fun CreditCardBackView(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .aspectRatio(1.75f)
+            .aspectRatio(1.586f)
             .shadow(elevation = 14.dp, shape = shape, ambientColor = Color.Black.copy(alpha = 0.35f), spotColor = Color.Black.copy(alpha = 0.5f))
             .clip(shape)
             .background(brush = Brush.linearGradient(listOf(Color(0xFF3A3D42), Color(0xFF232526), Color(0xFF141516))))

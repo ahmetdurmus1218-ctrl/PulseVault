@@ -57,7 +57,7 @@ fun CreditCardView(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .aspectRatio(1.75f)
+            .aspectRatio(1.586f)
             .shadow(elevation = 14.dp, shape = shape, ambientColor = Color.Black.copy(alpha = 0.35f), spotColor = Color.Black.copy(alpha = 0.5f))
             .clip(shape)
             .background(brush = gradientFor(bank, network))
