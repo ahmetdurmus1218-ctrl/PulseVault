@@ -57,14 +57,29 @@ fun LockScreen(onUnlockClick: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(32.dp))
-        Button(
-            onClick = onUnlockClick,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+        val (btnScale, btnInteraction) = com.screenpulsedev.pulsevault.ui.theme.rememberPressScale(pressedScale = 0.92f)
+        androidx.compose.foundation.layout.Box(
+            modifier = btnScale
+                .size(84.dp)
+                .androidx.compose.ui.draw.shadow(elevation = 10.dp, shape = CircleShape, ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
+                .background(color = MaterialTheme.colorScheme.primary, shape = CircleShape)
+                .androidx.compose.foundation.clickable(
+                    interactionSource = btnInteraction,
+                    indication = androidx.compose.foundation.LocalIndication.current,
+                    onClick = onUnlockClick
+                ),
+            contentAlignment = Alignment.Center
         ) {
-            Text("Kilidi Aç", fontWeight = FontWeight.SemiBold)
+            Icon(
+                imageVector = androidx.compose.material.icons.Icons.Filled.Fingerprint,
+                contentDescription = "Kilidi Aç",
+                tint = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.size(38.dp)
+            )
         }
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
+        Text("Dokun ve Aç", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
             "Parmak izi, yüz tanıma veya cihaz PIN/deseninle",
             style = MaterialTheme.typography.bodySmall,

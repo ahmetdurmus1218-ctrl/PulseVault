@@ -214,10 +214,19 @@ private fun NetworkBadge(network: CardNetwork) {
             modifier = Modifier
                 .clip(RoundedCornerShape(4.dp))
                 .background(Color.White)
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                .padding(horizontal = 9.dp, vertical = 4.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text("TROY", color = Color(0xFFE30613), fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1)
+            Text(
+                "troy",
+                style = androidx.compose.ui.text.TextStyle(
+                    brush = Brush.linearGradient(listOf(Color(0xFFE30613), Color(0xFFB3141F))),
+                    fontWeight = FontWeight.Black,
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                    fontSize = 14.sp
+                ),
+                maxLines = 1
+            )
         }
         CardNetwork.AMEX -> Text("AMEX", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 1.sp)
         CardNetwork.OTHER -> Text("•••", color = Color.White.copy(alpha = 0.6f), fontSize = 16.sp, textAlign = TextAlign.End)
