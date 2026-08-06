@@ -175,14 +175,14 @@ class MainActivity : FragmentActivity() {
         // Leaving the foreground (home button, app switcher, another app) always
         // re-locks — but NOT on a rotation/config-change recreate, which also
         // triggers onStop and would otherwise be a very annoying false lock.
+        //
+        // NOTE: we deliberately do NOT wipe the clipboard here anymore. Pasting
+        // a copied value into another app requires switching away from PulseVault
+        // first — which is exactly when onStop fires. Clearing immediately here
+        // wiped it before the paste could ever happen. The 30s delayed auto-clear
+        // (scheduled at copy time) is the real safety net.
         if (!isChangingConfigurations) {
             viewModel.lock()
-            // Don't wait for the 30s auto-clear timer once we're backgrounded —
-            // wipe anything we copied immediately, shrinking the exposure window.
-            try {
-                val clipboard = getSystemService(android.content.ClipboardManager::class.java)
-                clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("", ""))
-            } catch (_: Exception) { /* best-effort */ }
         }
     }
 }
