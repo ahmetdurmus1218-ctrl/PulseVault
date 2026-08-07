@@ -221,9 +221,9 @@ private fun NetworkBadge(network: CardNetwork) {
             val troyTeal = Color(0xFF1BADB5)
             Text(
                 text = androidx.compose.ui.text.buildAnnotatedString {
-                    withStyle(androidx.compose.ui.text.SpanStyle(color = troySlate)) { append("tr") }
-                    withStyle(androidx.compose.ui.text.SpanStyle(color = troyTeal)) { append("o") }
-                    withStyle(androidx.compose.ui.text.SpanStyle(color = troySlate)) { append("y") }
+                    androidx.compose.ui.text.withStyle(androidx.compose.ui.text.SpanStyle(color = troySlate)) { append("tr") }
+                    androidx.compose.ui.text.withStyle(androidx.compose.ui.text.SpanStyle(color = troyTeal)) { append("o") }
+                    androidx.compose.ui.text.withStyle(androidx.compose.ui.text.SpanStyle(color = troySlate)) { append("y") }
                 },
                 fontWeight = FontWeight.Black,
                 fontSize = 15.sp,
