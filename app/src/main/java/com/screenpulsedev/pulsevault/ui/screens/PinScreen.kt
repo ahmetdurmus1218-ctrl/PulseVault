@@ -17,25 +17,29 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Backspace
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.screenpulsedev.pulsevault.auth.PinManager
+import kotlinx.coroutines.delay
 
-private const val PIN_LENGTH = 4
+private const val PIN_LENGTH = PinManager.PIN_LENGTH
 
 /**
- * mode = ENTER: asks for the existing PIN, calls onSuccess(pin) when 4 digits are entered.
+ * mode = ENTER: asks for the existing PIN, calls onSuccess(pin) when digits are entered.
  * mode = SET: asks twice (create, then confirm) and calls onPinCreated(pin) on match.
  */
 enum class PinScreenMode { ENTER, SET }
@@ -45,6 +49,7 @@ fun PinScreen(
     mode: PinScreenMode,
     title: String,
     errorMessage: String? = null,
+    lockoutSecondsRemaining: Long = 0,
     onPinEntered: (String) -> Unit,
     onPinCreated: ((String) -> Unit)? = null,
     onCancel: (() -> Unit)? = null
@@ -54,6 +59,18 @@ fun PinScreen(
     var firstPin by remember { mutableStateOf<String?>(null) }
     var currentInput by remember { mutableStateOf("") }
     var localError by remember { mutableStateOf<String?>(null) }
+
+    // Live countdown so the person can see the lockout ticking down instead of
+    // just a static message — re-checks the actual stored value every second.
+    var remainingSeconds by remember(lockoutSecondsRemaining) { mutableStateOf(lockoutSecondsRemaining) }
+    LaunchedEffect(lockoutSecondsRemaining) {
+        remainingSeconds = lockoutSecondsRemaining
+        while (remainingSeconds > 0) {
+            delay(1000)
+            remainingSeconds = (remainingSeconds - 1).coerceAtLeast(0)
+        }
+    }
+    val isLockedOut = remainingSeconds > 0
 
     val displayTitle = when {
         mode == PinScreenMode.SET && firstPin == null -> title
@@ -78,12 +95,24 @@ fun PinScreen(
         Text(displayTitle, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(24.dp))
 
-        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        if (isLockedOut) {
+            Icon(Icons.Filled.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(40.dp))
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "Çok fazla hatalı deneme.\n${formatDuration(remainingSeconds)} sonra tekrar dene.",
+                color = MaterialTheme.colorScheme.error,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                fontWeight = FontWeight.SemiBold
+            )
+            return@Column
+        }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             repeat(PIN_LENGTH) { index ->
                 val filled = index < currentInput.length
                 Box(
                     modifier = Modifier
-                        .size(16.dp)
+                        .size(14.dp)
                         .background(
                             color = if (filled) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.surfaceVariant,
@@ -99,7 +128,7 @@ fun PinScreen(
             Text(shownError, color = MaterialTheme.colorScheme.error)
         }
 
-        Spacer(Modifier.height(40.dp))
+        Spacer(Modifier.height(32.dp))
 
         val rows = listOf(
             listOf("1", "2", "3"),
@@ -112,7 +141,7 @@ fun PinScreen(
                 row.forEach { digit ->
                     Box(
                         modifier = Modifier
-                            .size(64.dp)
+                            .size(60.dp)
                             .then(
                                 if (digit.isNotEmpty()) Modifier.clickable {
                                     localError = null
@@ -148,7 +177,13 @@ fun PinScreen(
                     }
                 }
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
         }
     }
+}
+
+private fun formatDuration(totalSeconds: Long): String {
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return if (minutes > 0) "$minutes dk $seconds sn" else "$seconds sn"
 }

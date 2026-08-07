@@ -50,7 +50,7 @@ fun SettingsScreen(
                 Column {
                     Text("Ek PIN Katmanı", fontWeight = FontWeight.SemiBold)
                     Text(
-                        "Cihaz kilidinden sonra, uygulamaya özel 4 haneli bir PIN daha iste",
+                        "Cihaz kilidinden sonra, uygulamaya özel 6 haneli bir PIN daha iste (art arda hatalı denemede geçici kilitlenir)",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

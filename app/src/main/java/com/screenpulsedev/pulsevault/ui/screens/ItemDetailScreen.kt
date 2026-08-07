@@ -86,6 +86,22 @@ fun ItemDetailScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).padding(16.dp)) {
+            val context = androidx.compose.ui.platform.LocalContext.current
+            if (com.screenpulsedev.pulsevault.auth.hasActiveAccessibilityServices(context)) {
+                androidx.compose.material3.Surface(
+                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.15f),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        "⚠ Ekranı okuyabilecek bir servis aktif — dikkatli ol",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(10.dp)
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+            }
             CardFlip(
                 isFlipped = isFlipped,
                 modifier = Modifier.fillMaxWidth(),

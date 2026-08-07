@@ -51,6 +51,11 @@ sealed interface Screen {
     data object AccessibilityWarning : Screen
     data class Detail(val item: VaultItem, val payload: VaultItemPayload) : Screen
     data class Edit(val item: VaultItem, val payload: VaultItemPayload) : Screen
+    // Held while LOCKED, in place of Detail/Edit — deliberately carries NO
+    // decrypted payload, so nothing plaintext sits in memory during a lock.
+    // On unlock, the real screen is rebuilt via a fresh decrypt (see VaultApp).
+    data class PendingDetail(val item: VaultItem) : Screen
+    data class PendingEdit(val item: VaultItem) : Screen
 }
 
 class VaultViewModel(private val repo: VaultRepository) : ViewModel() {
@@ -75,11 +80,15 @@ class VaultViewModel(private val repo: VaultRepository) : ViewModel() {
 
     private var savedScreen: Screen = Screen.List
 
-    /** Called whenever the app leaves the foreground — remembers where we were. */
+    /** Called whenever the app leaves the foreground — remembers where we were,
+     *  but NEVER keeps a decrypted payload alive across a lock. */
     fun lock() {
         val current = _screen.value
-        if (current !is Screen.Locked && current !is Screen.PinEntry) {
-            savedScreen = current
+        savedScreen = when (current) {
+            is Screen.Detail -> Screen.PendingDetail(current.item)
+            is Screen.Edit -> Screen.PendingEdit(current.item)
+            is Screen.Locked, is Screen.PinEntry, is Screen.AccessibilityWarning -> savedScreen
+            else -> current
         }
         _screen.value = Screen.Locked
     }
@@ -124,6 +133,17 @@ class VaultViewModel(private val repo: VaultRepository) : ViewModel() {
             try {
                 val payload = repo.decryptItem(cipher, item)
                 _screen.value = Screen.Detail(item, payload)
+            } catch (e: Exception) {
+                _errorEvent.value = "Bu kayıt açılamadı ve kurtarılamaz. Kaydı silip yeniden eklemen gerekiyor."
+            }
+        }
+    }
+
+    fun decryptForEdit(cipher: Cipher, item: VaultItem) {
+        viewModelScope.launch {
+            try {
+                val payload = repo.decryptItem(cipher, item)
+                _screen.value = Screen.Edit(item, payload)
             } catch (e: Exception) {
                 _errorEvent.value = "Bu kayıt açılamadı ve kurtarılamaz. Kaydı silip yeniden eklemen gerekiyor."
             }
@@ -242,6 +262,7 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
             mode = PinScreenMode.ENTER,
             title = "PIN Gir",
             errorMessage = pinError,
+            lockoutSecondsRemaining = PinManager.lockoutSecondsRemaining(activity),
             onPinEntered = { pin ->
                 if (PinManager.verifyPin(activity, pin)) {
                     pinError = null
@@ -340,6 +361,56 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
             },
             onCancel = { viewModel.goTo(Screen.List) }
         )
+
+        is Screen.PendingDetail -> {
+            // Re-authenticate and re-decrypt from scratch — nothing plaintext
+            // survived the lock, so this is a fresh request, not a cached restore.
+            androidx.compose.runtime.LaunchedEffect(current.item.id) {
+                BiometricAuthManager.authenticate(
+                    activity = activity,
+                    title = "Kaydı Görüntüle",
+                    subtitle = current.item.label,
+                    executor = executor,
+                    onSuccess = {
+                        try {
+                            val cipher = VaultCryptoManager.getDecryptCipher(current.item.iv)
+                            viewModel.decryptAndShow(cipher, current.item)
+                        } catch (e: Exception) {
+                            Toast.makeText(activity, "Hata: ${e.message}", Toast.LENGTH_LONG).show()
+                            viewModel.goTo(Screen.List)
+                        }
+                    },
+                    onError = {
+                        viewModel.goTo(Screen.List)
+                    }
+                )
+            }
+            LockScreen(onUnlockClick = {})
+        }
+
+        is Screen.PendingEdit -> {
+            androidx.compose.runtime.LaunchedEffect(current.item.id) {
+                BiometricAuthManager.authenticate(
+                    activity = activity,
+                    title = "Düzenlemeye Devam Et",
+                    subtitle = current.item.label,
+                    executor = executor,
+                    onSuccess = {
+                        try {
+                            val cipher = VaultCryptoManager.getDecryptCipher(current.item.iv)
+                            viewModel.decryptForEdit(cipher, current.item)
+                        } catch (e: Exception) {
+                            Toast.makeText(activity, "Hata: ${e.message}", Toast.LENGTH_LONG).show()
+                            viewModel.goTo(Screen.List)
+                        }
+                    },
+                    onError = {
+                        viewModel.goTo(Screen.List)
+                    }
+                )
+            }
+            LockScreen(onUnlockClick = {})
+        }
 
         is Screen.Detail -> {
             val isCardLike = current.item.category == VaultCategory.CREDIT_CARD ||

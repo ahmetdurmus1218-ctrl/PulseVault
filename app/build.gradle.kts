@@ -29,6 +29,25 @@ android {
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
+        // Release signing is INTENTIONALLY separate from debug and never falls back
+        // to it. Values come only from environment variables (e.g. GitHub Actions
+        // secrets) so no real signing key is ever committed to the repo. If these
+        // aren't set, a release build simply fails to sign rather than silently
+        // reusing the public debug key — a safe failure instead of a silent risk.
+        create("release") {
+            val storeFilePath = System.getenv("RELEASE_KEYSTORE_PATH")
+            val storePass = System.getenv("RELEASE_KEYSTORE_PASSWORD")
+            val alias = System.getenv("RELEASE_KEY_ALIAS")
+            val keyPass = System.getenv("RELEASE_KEY_PASSWORD")
+            if (!storeFilePath.isNullOrBlank() && !storePass.isNullOrBlank() &&
+                !alias.isNullOrBlank() && !keyPass.isNullOrBlank()
+            ) {
+                storeFile = file(storeFilePath)
+                storePassword = storePass
+                keyAlias = alias
+                keyPassword = keyPass
+            }
+        }
     }
 
     buildTypes {
@@ -38,7 +57,7 @@ android {
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
