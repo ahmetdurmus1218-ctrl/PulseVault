@@ -29,8 +29,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.screenpulsedev.pulsevault.data.CardNetwork
@@ -220,10 +223,10 @@ private fun NetworkBadge(network: CardNetwork) {
             val troySlate = Color(0xFF4A4E58)
             val troyTeal = Color(0xFF1BADB5)
             Text(
-                text = androidx.compose.ui.text.buildAnnotatedString {
-                    androidx.compose.ui.text.withStyle(androidx.compose.ui.text.SpanStyle(color = troySlate)) { append("tr") }
-                    androidx.compose.ui.text.withStyle(androidx.compose.ui.text.SpanStyle(color = troyTeal)) { append("o") }
-                    androidx.compose.ui.text.withStyle(androidx.compose.ui.text.SpanStyle(color = troySlate)) { append("y") }
+                text = buildAnnotatedString {
+                    withStyle(SpanStyle(color = troySlate)) { append("tr") }
+                    withStyle(SpanStyle(color = troyTeal)) { append("o") }
+                    withStyle(SpanStyle(color = troySlate)) { append("y") }
                 },
                 fontWeight = FontWeight.Black,
                 fontSize = 15.sp,
