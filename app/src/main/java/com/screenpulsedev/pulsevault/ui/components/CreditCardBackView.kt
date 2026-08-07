@@ -50,19 +50,22 @@ fun CreditCardBackView(
     onRequestAuth: (onGranted: () -> Unit) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Bumping the nonce for a field key resets its 15s auto-hide timer.
-    val revealNonce = remember { mutableStateMapOf<String, Int>() }
+    // Only one field is ever revealed at a time — revealing a new one closes
+    // whichever was previously open. "currentlyRevealed" holds that field's key.
+    var currentlyRevealed by remember { mutableStateOf<String?>(null) }
+    var revealGeneration by remember { mutableStateOf(0) }
 
     fun reveal(key: String) {
-        revealNonce[key] = (revealNonce[key] ?: 0) + 1
+        currentlyRevealed = key
+        revealGeneration++
     }
 
     @Composable
     fun isRevealed(key: String): Boolean {
-        val nonce = revealNonce[key] ?: 0
-        if (nonce == 0) return false
-        var revealed by remember(key, nonce) { mutableStateOf(true) }
-        androidx.compose.runtime.LaunchedEffect(key, nonce) {
+        if (currentlyRevealed != key) return false
+        val generation = revealGeneration
+        var revealed by remember(key, generation) { mutableStateOf(true) }
+        androidx.compose.runtime.LaunchedEffect(key, generation) {
             delay(15_000)
             revealed = false
         }

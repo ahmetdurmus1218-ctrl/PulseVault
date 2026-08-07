@@ -12,7 +12,7 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import java.util.concurrent.TimeUnit
 
-private const val CLEAR_DELAY_SECONDS = 30L
+private const val CLEAR_DELAY_SECONDS = 15L
 private const val KEY_EXPECTED_TEXT = "expected_text"
 
 /**

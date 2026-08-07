@@ -217,14 +217,16 @@ private fun NetworkBadge(network: CardNetwork) {
                 .padding(horizontal = 9.dp, vertical = 4.dp),
             contentAlignment = Alignment.Center
         ) {
+            val troySlate = Color(0xFF4A4E58)
+            val troyTeal = Color(0xFF1BADB5)
             Text(
-                "troy",
-                style = androidx.compose.ui.text.TextStyle(
-                    brush = Brush.linearGradient(listOf(Color(0xFFE30613), Color(0xFFB3141F))),
-                    fontWeight = FontWeight.Black,
-                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                    fontSize = 14.sp
-                ),
+                text = androidx.compose.ui.text.buildAnnotatedString {
+                    withStyle(androidx.compose.ui.text.SpanStyle(color = troySlate)) { append("tr") }
+                    withStyle(androidx.compose.ui.text.SpanStyle(color = troyTeal)) { append("o") }
+                    withStyle(androidx.compose.ui.text.SpanStyle(color = troySlate)) { append("y") }
+                },
+                fontWeight = FontWeight.Black,
+                fontSize = 15.sp,
                 maxLines = 1
             )
         }

@@ -356,7 +356,7 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
                     payload = current.payload,
                     onCopy = { fieldLabel, value ->
                         copySensitiveText(activity, fieldLabel, value)
-                        Toast.makeText(activity, "$fieldLabel kopyalandı (30sn sonra silinir)", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(activity, "$fieldLabel kopyalandı (15sn sonra silinir)", Toast.LENGTH_SHORT).show()
                     },
                     onRequestAuth = { onGranted ->
                         BiometricAuthManager.authenticate(
@@ -381,7 +381,7 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
                     payload = current.payload,
                     onCopy = { fieldLabel, value ->
                         copySensitiveText(activity, fieldLabel, value)
-                        Toast.makeText(activity, "$fieldLabel kopyalandı (30sn sonra silinir)", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(activity, "$fieldLabel kopyalandı (15sn sonra silinir)", Toast.LENGTH_SHORT).show()
                     },
                     onDelete = { viewModel.delete(current.item) },
                     onEdit = { viewModel.goTo(Screen.Edit(current.item, current.payload)) },
