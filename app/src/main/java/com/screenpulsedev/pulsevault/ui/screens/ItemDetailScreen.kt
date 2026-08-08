@@ -132,7 +132,7 @@ fun ItemDetailScreen(
 
             Spacer(Modifier.height(12.dp))
             Text(
-                "Kopyalanan veriler 15 saniye sonra panodan otomatik silinir.",
+                "Kopyalanan veriler kısa süre sonra panodan otomatik silinir (Ayarlar'dan değiştirilebilir).",
                 style = MaterialTheme.typography.bodySmall
             )
             Spacer(Modifier.height(20.dp))

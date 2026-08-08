@@ -214,6 +214,9 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
     val errorEvent by viewModel.errorEvent.collectAsState()
     val executor = ContextCompat.getMainExecutor(activity)
     var appPinEnabled by remember { mutableStateOf(PinManager.isPinSet(activity)) }
+    var clipboardDelaySeconds by remember {
+        mutableStateOf(com.screenpulsedev.pulsevault.util.SecureClipboardManager.getDelaySeconds(activity))
+    }
     var pinError by remember { mutableStateOf<String?>(null) }
 
     androidx.compose.runtime.LaunchedEffect(errorEvent) {
@@ -325,6 +328,11 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
                     appPinEnabled = false
                 }
             },
+            clipboardDelaySeconds = clipboardDelaySeconds,
+            onClipboardDelayChange = { seconds ->
+                com.screenpulsedev.pulsevault.util.SecureClipboardManager.setDelaySeconds(activity, seconds)
+                clipboardDelaySeconds = seconds
+            },
             onBack = { viewModel.goTo(Screen.List) }
         )
 
@@ -427,7 +435,7 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
                     payload = current.payload,
                     onCopy = { fieldLabel, value ->
                         copySensitiveText(activity, fieldLabel, value)
-                        Toast.makeText(activity, "$fieldLabel kopyalandı (15sn sonra silinir)", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(activity, "$fieldLabel kopyalandı (${clipboardDelaySeconds}sn sonra silinir)", Toast.LENGTH_SHORT).show()
                     },
                     onRequestAuth = { onGranted ->
                         BiometricAuthManager.authenticate(
@@ -452,7 +460,7 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
                     payload = current.payload,
                     onCopy = { fieldLabel, value ->
                         copySensitiveText(activity, fieldLabel, value)
-                        Toast.makeText(activity, "$fieldLabel kopyalandı (15sn sonra silinir)", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(activity, "$fieldLabel kopyalandı (${clipboardDelaySeconds}sn sonra silinir)", Toast.LENGTH_SHORT).show()
                     },
                     onDelete = { viewModel.delete(current.item) },
                     onEdit = { viewModel.goTo(Screen.Edit(current.item, current.payload)) },
