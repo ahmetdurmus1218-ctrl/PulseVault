@@ -7,6 +7,7 @@
         because the OS itself blocks network sockets for apps that don't declare INTERNET.
     -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application
         android:allowBackup="false"

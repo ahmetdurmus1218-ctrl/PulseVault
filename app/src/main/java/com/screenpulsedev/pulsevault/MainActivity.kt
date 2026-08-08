@@ -333,6 +333,17 @@ fun VaultApp(viewModel: VaultViewModel, activity: FragmentActivity) {
                 com.screenpulsedev.pulsevault.util.SecureClipboardManager.setDelaySeconds(activity, seconds)
                 clipboardDelaySeconds = seconds
             },
+            onRequestBatteryExemption = {
+                try {
+                    val intent = android.content.Intent(
+                        android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                        android.net.Uri.parse("package:${activity.packageName}")
+                    )
+                    activity.startActivity(intent)
+                } catch (e: Exception) {
+                    Toast.makeText(activity, "Bu ayar cihazında bulunamadı", Toast.LENGTH_SHORT).show()
+                }
+            },
             onBack = { viewModel.goTo(Screen.List) }
         )
 

@@ -34,6 +34,7 @@ fun SettingsScreen(
     onToggleAppPin: (enable: Boolean) -> Unit,
     clipboardDelaySeconds: Int,
     onClipboardDelayChange: (Int) -> Unit,
+    onRequestBatteryExemption: () -> Unit,
     onBack: () -> Unit
 ) {
     BackHandler(onBack = onBack)
@@ -88,6 +89,23 @@ fun SettingsScreen(
                         )
                     )
                 }
+            }
+            Spacer(Modifier.height(24.dp))
+
+            Text("Güvenilir Arka Plan Temizleme", fontWeight = FontWeight.SemiBold)
+            Text(
+                "Bazı telefonlar (özellikle Vivo, Xiaomi, Oppo) pil tasarrufu için arka plan " +
+                    "zamanlayıcılarını durdurabiliyor — bu da pano temizlemenin gecikmesine neden olur. " +
+                    "PulseVault'u pil optimizasyonundan hariç tutmak bunu çözer.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(8.dp))
+            androidx.compose.material3.Button(
+                onClick = onRequestBatteryExemption,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Pil Optimizasyonundan Hariç Tut")
             }
         }
     }
